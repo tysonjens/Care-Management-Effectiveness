@@ -3,8 +3,8 @@ DECLARE @START_MTH smalldatetime
 	   ,@START_MM int												
 	   ,@END_MM int												
 													
-SET	@START_MTH = '2/1/2018'												
-SET	@END_MTH = '2/2/2018'												
+SET	@START_MTH = '9/1/2017'												
+SET	@END_MTH = '8/30/2018'												
 SET @START_MM = 201801													
 SET @END_MM = 201805												
 													
@@ -16,7 +16,8 @@ SET @END_MM = 201805
 		  ,ISNULL(NULL,'') AS MM											
 		  ,Q.[MRN]											
 		  ,Q.LastName											
-		  ,Q.FirstName											
+		  ,Q.FirstName
+		  ,Q.EMPI											
 		  ,Q.Acuity											
 		  ,Q.Facility											
 		  ,Q.AdmitDt											
@@ -153,7 +154,8 @@ SET @END_MM = 201805
 		  ,Q.LOB											
 		  ,Q.[MRN]											
 		  ,Q.LastName											
-		  ,Q.FirstName											
+		  ,Q.FirstName	
+		  ,Q.EMPI										
 		  ,Q.Acuity											
 		  ,Q.Facility											
 		  ,Q.AdmitDt											
@@ -201,7 +203,8 @@ UNION ALL
 		  ,NULL											
 		  ,NULL											
 		  ,NULL											
-		  ,NULL											
+		  ,NULL	
+		  ,NULL										
 		  ,NULL											
 		  ,NULL											
 		  ,NULL											
