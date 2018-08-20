@@ -11,13 +11,14 @@ import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 from dateutil.parser import parse
 from pandas.tseries.offsets import Day
+from sklearn import linear_model
 # import warnings; warnings.simplefilter('ignore')
 pd.set_option("display.max_columns", 100)
 pd.set_option('display.max_rows', 500)
 get_ipython().run_line_magic('matplotlib', 'inline')
 
 
-# In[2]:
+# In[ ]:
 
 
 ## READ In Programs, Admissions, and Lace data
@@ -25,19 +26,25 @@ get_ipython().run_line_magic('matplotlib', 'inline')
 progs = pd.read_csv('data/Program_Patdim.csv')
 
 
-# In[3]:
+# In[ ]:
 
 
 admits = pd.read_csv('data/admissions.csv', sep='|', low_memory=False)
 
 
-# In[4]:
+# In[ ]:
+
+
+LACE = pd.read_csv('data/lace_empi', sep='|')
+
+
+# In[ ]:
 
 
 ## Cleaning, field removal, and data type changes
 
 
-# In[5]:
+# In[ ]:
 
 
 ## convert dates to date time
@@ -46,7 +53,7 @@ progs['date_of_birth'] = pd.to_datetime(progs['DOB'])
 progs['prog_end_date'] = pd.to_datetime(progs['END_TMS'])
 
 
-# In[6]:
+# In[ ]:
 
 
 ## replace sex with is_male
@@ -59,19 +66,19 @@ progs['is_optin'] = progs['PRGM_STOP_RSN'].replace(opt_in)
 # progs['is_male'].fillna(0, inplace=True)
 
 
-# In[7]:
+# In[ ]:
 
 
 admits['EMPI'].fillna(999999999, inplace=True)
 
 
-# In[8]:
+# In[ ]:
 
 
 admits['EMPI'] = admits['EMPI'].astype(int)
 
 
-# In[9]:
+# In[ ]:
 
 
 ## replace date_of _ birth with age
@@ -80,7 +87,7 @@ progs['age'] = progs['age'] / timedelta(days=1) / 365
 progs['age'].fillna(float(progs['age'].mean()), inplace=True)
 
 
-# In[10]:
+# In[ ]:
 
 
 new_sex = {'F':0, 'M':1}
@@ -88,7 +95,7 @@ progs['is_male'] = progs['Sex'].replace(new_sex)
 progs['is_male'].fillna(0, inplace=True)
 
 
-# In[11]:
+# In[ ]:
 
 
 ## drop unneeded columns
@@ -96,19 +103,19 @@ prog_cols_drop = ['PTNT_DK', 'PTNT_DK.1', 'DOB', 'Sex', 'CRT_TMS', 'END_TMS', 'T
 progs = progs.drop(prog_cols_drop, axis=1)
 
 
-# In[12]:
+# In[ ]:
 
 
 progs = progs[(progs['prog_create_date']>'2018-04-01') & (progs['prog_create_date']<'2018-08-01')]
 
 
-# In[13]:
+# In[ ]:
 
 
 progs = progs.reset_index()
 
 
-# In[14]:
+# In[ ]:
 
 
 ## convert object columns to categoricals
@@ -116,7 +123,7 @@ for col in ['RGON_NM', 'HP_NM', 'LOB_SUB_CGY', 'PRGM_NM', 'PRGM_STOP_RSN']:
     progs[col] = progs[col].astype('category')
 
 
-# In[15]:
+# In[ ]:
 
 
 ## convert dates to date time
@@ -124,7 +131,7 @@ admits['admit_date'] = pd.to_datetime(admits['AdmitDt'])
 admits['discharge_date'] = pd.to_datetime(admits['DischDt'])
 
 
-# In[16]:
+# In[ ]:
 
 
 ## replace Model with is_group
@@ -133,7 +140,7 @@ admits['is_group'] = admits['Model'].replace(new_Model)
 admits['is_group'].fillna(0, inplace=True)
 
 
-# In[17]:
+# In[ ]:
 
 
 ## drop unneeded columns
@@ -142,7 +149,7 @@ admits_cols_drop = ['Model', 'PCP', 'MM', 'MRN', 'LastName',
 admits = admits.drop(admits_cols_drop, axis=1)
 
 
-# In[18]:
+# In[ ]:
 
 
 ## change objects to categories
@@ -152,26 +159,33 @@ for col in cols_to_category:
     admits[col] = admits[col].astype('category')
 
 
-# In[19]:
+# In[ ]:
+
+
+## update LACE score data
+LACE['ASES_DT'] = pd.to_datetime(LACE['ASES_DT'])
+
+
+# In[ ]:
 
 
 ## create new columns using functions and the admits data
 
 
-# In[20]:
+# In[ ]:
 
 
 admits_all = admits
 
 
-# In[21]:
+# In[ ]:
 
 
 ## only keep acute admissions
 admits = admits[admits['Acuity']=='ACUTE']
 
 
-# In[71]:
+# In[ ]:
 
 
 ## function that finds the most recent discharge before a program begins
@@ -179,7 +193,7 @@ def find_index_admit(programs, admissions):
     admissions = admissions.sort_values(by='discharge_date', ascending=False)
     index_dates = np.empty(programs.shape[0])
     index_dates[:] = np.nan
-    index_dates = list(first_admission)
+    index_dates = list(index_dates)
     for index, row in programs.iterrows():
         admit_pat = admissions[admissions['EMPI']==row['EMPI']]
         for index2, row2 in admit_pat.iterrows():
@@ -191,15 +205,7 @@ def find_index_admit(programs, admissions):
     return index_dates
 
 
-# In[23]:
-
-
-index_dates = find_index_admit(progs, admits_all)
-progs['index_date'] = index_dates
-progs['index_date'] = pd.to_datetime(progs['index_date'])
-
-
-# In[72]:
+# In[ ]:
 
 
 ## function that finds the first admission after a program begins
@@ -219,7 +225,42 @@ def find_first_admission_after_enroll(programs, admissions):
     return first_admission
 
 
-# In[73]:
+# In[ ]:
+
+
+index_dates = find_index_admit(progs, admits_all)
+progs['index_date'] = index_dates
+progs['index_date'] = pd.to_datetime(progs['index_date'])
+
+
+# In[ ]:
+
+
+## function that finds the LACE score that occurred within 10 days (prior) to program start date
+def find_lace_prior_to_enroll(programs, lace, window_size=10):
+    lace = lace.sort_values(by='ASES_DT', ascending=False)
+    lace_scores = np.empty(programs.shape[0])
+    lace_scores[:] = np.nan
+    lace_scores = list(lace_scores)
+    for index, row in programs.iterrows():
+        lace_pat = lace[lace['EMPI']==row['EMPI']]
+        for index2, row2 in lace_pat.iterrows():
+            if (row2['ASES_DT'] < row['prog_create_date']) & (row2['ASES_DT'] > (row['prog_create_date']-timedelta(days=window_size))):
+                lace_scores[index] = row2['ASES_SCOR']
+                break
+            else:
+                continue
+    return lace_scores
+
+
+# In[ ]:
+
+
+lace_scores = find_lace_prior_to_enroll(progs, LACE)
+progs['lace_score'] = lace_scores
+
+
+# In[ ]:
 
 
 first_admissions = find_first_admission_after_enroll(progs, admits)
@@ -227,7 +268,7 @@ progs['frst_adm_aftr_enrl'] = first_admissions
 progs['frst_adm_aftr_enrl'] = pd.to_datetime(progs['frst_adm_aftr_enrl'])
 
 
-# In[27]:
+# In[ ]:
 
 
 ## function that counts the number of admits in a window AFTER a program begins
@@ -243,7 +284,7 @@ def get_adm_after(programs, admissions, window_size=30):
     return admits_in_window
 
 
-# In[28]:
+# In[ ]:
 
 
 ## function that counts the number of admits in a window AFTER a program begins
@@ -259,7 +300,7 @@ def get_adm_after_TOC(programs, admissions, window_size=30):
     return admits_in_window
 
 
-# In[29]:
+# In[ ]:
 
 
 ## function that counts the number of admits in a window BEFORE a program begins
@@ -275,7 +316,7 @@ def get_adm_before(programs, admissions, window_size=30):
     return admits_in_window
 
 
-# In[30]:
+# In[ ]:
 
 
 ## calc number of admits that occur within 30 day window after program begins
@@ -283,7 +324,7 @@ thirty_day_after = get_adm_after(progs, admits)
 progs['adm_30_after'] = thirty_day_after
 
 
-# In[31]:
+# In[ ]:
 
 
 ## calc number of admits that occur within 30 day window before program begins
@@ -291,35 +332,35 @@ thirty_day_before = get_adm_before(progs, admits)
 progs['adm_30_before'] = thirty_day_before
 
 
-# In[32]:
+# In[ ]:
 
 
 progs['time_to_enroll'] = progs['prog_create_date']-progs['index_date']
 progs['time_to_enroll'] = progs['time_to_enroll']/ timedelta(days=1)
 
 
-# In[33]:
+# In[ ]:
 
 
 progs['prog_duration'] = progs['prog_end_date']-progs['prog_create_date']
 progs['prog_duration'] = progs['prog_duration']/ timedelta(days=1)
 
 
-# In[79]:
+# In[ ]:
 
 
 progs['index_to_next_days'] = progs['frst_adm_aftr_enrl']-progs['index_date']
 progs['index_to_next_days'] = progs['index_to_next_days']/ timedelta(days=1)
 
 
-# In[34]:
+# In[ ]:
 
 
 thirty_day_after_TOC = get_adm_after_TOC(progs, admits)
 progs['adm_30_after_TOC'] = thirty_day_after_TOC
 
 
-# In[35]:
+# In[ ]:
 
 
 fighist = plt.figure(figsize=(12,6))
@@ -334,7 +375,7 @@ ax1.set_xlim(left=-5, right=130)
 ax1.legend();
 
 
-# In[36]:
+# In[ ]:
 
 
 fighist = plt.figure(figsize=(12,6))
@@ -348,7 +389,7 @@ ax1.set_xlabel('days to enrollment')
 ax1.legend();
 
 
-# In[43]:
+# In[ ]:
 
 
 fighist_TOC = plt.figure(figsize=(12,6))
@@ -364,7 +405,7 @@ ax1.set_xlim(left=-5, right=50)
 ax1.legend();
 
 
-# In[38]:
+# In[ ]:
 
 
 fighist_TOC = plt.figure(figsize=(12,6))
@@ -380,7 +421,7 @@ ax1.set_xlim(left=0, right=50)
 ax1.legend();
 
 
-# In[39]:
+# In[ ]:
 
 
 fighist_TOC = plt.figure(figsize=(12,6))
@@ -393,13 +434,13 @@ ax1.set_xlim(left=0, right=40)
 ax1.legend();
 
 
-# In[40]:
+# In[ ]:
 
 
 progs.pivot_table(values='EMPI', index='PRGM_NM', aggfunc=['count'])
 
 
-# In[42]:
+# In[ ]:
 
 
 progs[progs['PRGM_NM']=='Transitions of Care - Post Discharge'].pivot_table(values='adm_30_after_TOC', index='PRGM_STOP_RSN', aggfunc=['count','mean'], dropna=True)
@@ -408,13 +449,64 @@ progs[progs['PRGM_NM']=='Transitions of Care - Post Discharge'].pivot_table(valu
 # In[ ]:
 
 
+## Understand relationship between LACE and time to enroll
+
+
+# In[ ]:
+
+
+progs[progs['PRGM_NM']=='Transitions of Care - Post Discharge'].pivot_table(values='adm_30_after_TOC', index='lace_score', columns='is_optin', aggfunc=['count','mean'], dropna=True)
+
+
+# In[ ]:
+
+
+## graph violinplots of optin vs. optout LACE Scores.
+sns.violinplot(x="is_optin", y='lace_score', data=progs)
+
+
+# In[ ]:
+
+
 ## CHF difference of differences analysis.  
 
 
-# In[46]:
+# In[ ]:
 
 
 progs[progs['PRGM_NM']=='DM - CLD'].pivot_table(values='adm_30_after', index='PRGM_STOP_RSN', aggfunc=['count','mean'], dropna=True)
+
+
+# In[ ]:
+
+
+## use logisic regression to test whether opt_in has impact on readmit_30_days_TOC, controlling for other variables.
+
+
+# In[ ]:
+
+
+## need to fill X vars' na with appropriate values:
+## is_optin in - drop na rows
+## age - average
+## is_male - make them 0s
+## lace_score = average lace score
+## time_to_enroll = average
+## prog duration - average
+
+
+# In[ ]:
+
+
+model = linear_model.LogisticRegression()
+y = np.array(progs['adm_30_after_TOC'])
+X = np.array(progs[['is_optin', 'age', 'is_male', 'lace_score', 'time_to_enroll', 'prog_duration']])
+
+
+# In[ ]:
+
+
+model.fit(X, y)
 
 
 # In[ ]:
@@ -424,7 +516,7 @@ progs[progs['PRGM_NM']=='DM - CLD'].pivot_table(values='adm_30_after', index='PR
 ## our ability to use time cutoffs to groups patients into opt-ins or opt-outs?
 
 
-# In[87]:
+# In[ ]:
 
 
 fighist_TOC = plt.figure(figsize=(12,6))
@@ -435,4 +527,10 @@ ax1.set_ylabel('Percent of Patients')
 ax1.set_xlabel('days to next admission')
 ax1.set_xlim(left=0, right=200)
 ax1.legend();
+
+
+# In[ ]:
+
+
+progs.head()
 
