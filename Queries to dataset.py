@@ -17,7 +17,7 @@ pd.set_option('display.max_rows', 500)
 get_ipython().run_line_magic('matplotlib', 'inline')
 
 
-# In[ ]:
+# In[2]:
 
 
 ## READ In Programs, Admissions, and Lace data
@@ -25,19 +25,19 @@ get_ipython().run_line_magic('matplotlib', 'inline')
 progs = pd.read_csv('data/Program_Patdim.csv')
 
 
-# In[ ]:
+# In[3]:
 
 
 admits = pd.read_csv('data/admissions.csv', sep='|', low_memory=False)
 
 
-# In[ ]:
+# In[4]:
 
 
 ## Cleaning, field removal, and data type changes
 
 
-# In[ ]:
+# In[5]:
 
 
 ## convert dates to date time
@@ -46,7 +46,7 @@ progs['date_of_birth'] = pd.to_datetime(progs['DOB'])
 progs['prog_end_date'] = pd.to_datetime(progs['END_TMS'])
 
 
-# In[ ]:
+# In[6]:
 
 
 ## replace sex with is_male
@@ -59,19 +59,19 @@ progs['is_optin'] = progs['PRGM_STOP_RSN'].replace(opt_in)
 # progs['is_male'].fillna(0, inplace=True)
 
 
-# In[ ]:
+# In[7]:
 
 
 admits['EMPI'].fillna(999999999, inplace=True)
 
 
-# In[ ]:
+# In[8]:
 
 
 admits['EMPI'] = admits['EMPI'].astype(int)
 
 
-# In[ ]:
+# In[9]:
 
 
 ## replace date_of _ birth with age
@@ -80,7 +80,7 @@ progs['age'] = progs['age'] / timedelta(days=1) / 365
 progs['age'].fillna(float(progs['age'].mean()), inplace=True)
 
 
-# In[ ]:
+# In[10]:
 
 
 new_sex = {'F':0, 'M':1}
@@ -88,7 +88,7 @@ progs['is_male'] = progs['Sex'].replace(new_sex)
 progs['is_male'].fillna(0, inplace=True)
 
 
-# In[ ]:
+# In[11]:
 
 
 ## drop unneeded columns
@@ -96,19 +96,19 @@ prog_cols_drop = ['PTNT_DK', 'PTNT_DK.1', 'DOB', 'Sex', 'CRT_TMS', 'END_TMS', 'T
 progs = progs.drop(prog_cols_drop, axis=1)
 
 
-# In[ ]:
+# In[12]:
 
 
 progs = progs[(progs['prog_create_date']>'2018-04-01') & (progs['prog_create_date']<'2018-08-01')]
 
 
-# In[ ]:
+# In[13]:
 
 
 progs = progs.reset_index()
 
 
-# In[ ]:
+# In[14]:
 
 
 ## convert object columns to categoricals
@@ -116,7 +116,7 @@ for col in ['RGON_NM', 'HP_NM', 'LOB_SUB_CGY', 'PRGM_NM', 'PRGM_STOP_RSN']:
     progs[col] = progs[col].astype('category')
 
 
-# In[ ]:
+# In[15]:
 
 
 ## convert dates to date time
@@ -124,7 +124,7 @@ admits['admit_date'] = pd.to_datetime(admits['AdmitDt'])
 admits['discharge_date'] = pd.to_datetime(admits['DischDt'])
 
 
-# In[ ]:
+# In[16]:
 
 
 ## replace Model with is_group
@@ -133,7 +133,7 @@ admits['is_group'] = admits['Model'].replace(new_Model)
 admits['is_group'].fillna(0, inplace=True)
 
 
-# In[ ]:
+# In[17]:
 
 
 ## drop unneeded columns
@@ -142,7 +142,7 @@ admits_cols_drop = ['Model', 'PCP', 'MM', 'MRN', 'LastName',
 admits = admits.drop(admits_cols_drop, axis=1)
 
 
-# In[ ]:
+# In[18]:
 
 
 ## change objects to categories
@@ -152,33 +152,34 @@ for col in cols_to_category:
     admits[col] = admits[col].astype('category')
 
 
-# In[ ]:
+# In[19]:
 
 
 ## create new columns using functions and the admits data
 
-admits = admits.sort_values(by='discharge_date', ascending=False)
 
-
-# In[ ]:
+# In[20]:
 
 
 admits_all = admits
 
 
-# In[ ]:
+# In[21]:
 
 
 ## only keep acute admissions
 admits = admits[admits['Acuity']=='ACUTE']
 
 
-# In[ ]:
+# In[71]:
 
 
 ## function that finds the most recent discharge before a program begins
 def find_index_admit(programs, admissions):
-    index_dates = list(np.zeros(programs.shape[0]))
+    admissions = admissions.sort_values(by='discharge_date', ascending=False)
+    index_dates = np.empty(programs.shape[0])
+    index_dates[:] = np.nan
+    index_dates = list(first_admission)
     for index, row in programs.iterrows():
         admit_pat = admissions[admissions['EMPI']==row['EMPI']]
         for index2, row2 in admit_pat.iterrows():
@@ -190,31 +191,43 @@ def find_index_admit(programs, admissions):
     return index_dates
 
 
-# In[ ]:
+# In[23]:
 
 
 index_dates = find_index_admit(progs, admits_all)
-
-
-# In[ ]:
-
-
 progs['index_date'] = index_dates
-
-
-# In[ ]:
-
-
-progs['index_date'].replace(0, np.nan, inplace=True)
-
-
-# In[ ]:
-
-
 progs['index_date'] = pd.to_datetime(progs['index_date'])
 
 
-# In[ ]:
+# In[72]:
+
+
+## function that finds the first admission after a program begins
+def find_first_admission_after_enroll(programs, admissions):
+    admissions = admissions.sort_values(by='admit_date', ascending=True)
+    first_admission = np.empty(programs.shape[0])
+    first_admission[:] = np.nan
+    first_admission = list(first_admission)
+    for index, row in programs.iterrows():
+        admit_pat = admissions[admissions['EMPI']==row['EMPI']]
+        for index2, row2 in admit_pat.iterrows():
+            if row2['admit_date'] > row['prog_create_date']:
+                first_admission[index] = row2['discharge_date']
+                break
+            else:
+                continue
+    return first_admission
+
+
+# In[73]:
+
+
+first_admissions = find_first_admission_after_enroll(progs, admits)
+progs['frst_adm_aftr_enrl'] = first_admissions
+progs['frst_adm_aftr_enrl'] = pd.to_datetime(progs['frst_adm_aftr_enrl'])
+
+
+# In[27]:
 
 
 ## function that counts the number of admits in a window AFTER a program begins
@@ -230,7 +243,7 @@ def get_adm_after(programs, admissions, window_size=30):
     return admits_in_window
 
 
-# In[ ]:
+# In[28]:
 
 
 ## function that counts the number of admits in a window AFTER a program begins
@@ -246,7 +259,7 @@ def get_adm_after_TOC(programs, admissions, window_size=30):
     return admits_in_window
 
 
-# In[ ]:
+# In[29]:
 
 
 ## function that counts the number of admits in a window BEFORE a program begins
@@ -262,7 +275,7 @@ def get_adm_before(programs, admissions, window_size=30):
     return admits_in_window
 
 
-# In[ ]:
+# In[30]:
 
 
 ## calc number of admits that occur within 30 day window after program begins
@@ -270,7 +283,7 @@ thirty_day_after = get_adm_after(progs, admits)
 progs['adm_30_after'] = thirty_day_after
 
 
-# In[ ]:
+# In[31]:
 
 
 ## calc number of admits that occur within 30 day window before program begins
@@ -278,28 +291,35 @@ thirty_day_before = get_adm_before(progs, admits)
 progs['adm_30_before'] = thirty_day_before
 
 
-# In[ ]:
+# In[32]:
 
 
 progs['time_to_enroll'] = progs['prog_create_date']-progs['index_date']
 progs['time_to_enroll'] = progs['time_to_enroll']/ timedelta(days=1)
 
 
-# In[ ]:
+# In[33]:
 
 
 progs['prog_duration'] = progs['prog_end_date']-progs['prog_create_date']
 progs['prog_duration'] = progs['prog_duration']/ timedelta(days=1)
 
 
-# In[ ]:
+# In[79]:
+
+
+progs['index_to_next_days'] = progs['frst_adm_aftr_enrl']-progs['index_date']
+progs['index_to_next_days'] = progs['index_to_next_days']/ timedelta(days=1)
+
+
+# In[34]:
 
 
 thirty_day_after_TOC = get_adm_after_TOC(progs, admits)
 progs['adm_30_after_TOC'] = thirty_day_after_TOC
 
 
-# In[ ]:
+# In[35]:
 
 
 fighist = plt.figure(figsize=(12,6))
@@ -314,7 +334,7 @@ ax1.set_xlim(left=-5, right=130)
 ax1.legend();
 
 
-# In[ ]:
+# In[36]:
 
 
 fighist = plt.figure(figsize=(12,6))
@@ -328,7 +348,7 @@ ax1.set_xlabel('days to enrollment')
 ax1.legend();
 
 
-# In[ ]:
+# In[43]:
 
 
 fighist_TOC = plt.figure(figsize=(12,6))
@@ -340,11 +360,11 @@ ax1.hist(np.array((progs[(progs['PRGM_NM']=='Transitions of Care - Post Discharg
                   (progs['is_optin']==1)]['prog_duration'].dropna())), bins = 100, alpha = 0.4, density=1, label='Opt-in')
 ax1.set_ylabel('Percent of Patients')
 ax1.set_xlabel('days in program')
-ax1.set_xlim(left=-1, right=50)
+ax1.set_xlim(left=-5, right=50)
 ax1.legend();
 
 
-# In[ ]:
+# In[38]:
 
 
 fighist_TOC = plt.figure(figsize=(12,6))
@@ -360,7 +380,7 @@ ax1.set_xlim(left=0, right=50)
 ax1.legend();
 
 
-# In[ ]:
+# In[39]:
 
 
 fighist_TOC = plt.figure(figsize=(12,6))
@@ -373,14 +393,46 @@ ax1.set_xlim(left=0, right=40)
 ax1.legend();
 
 
-# In[ ]:
+# In[40]:
 
 
 progs.pivot_table(values='EMPI', index='PRGM_NM', aggfunc=['count'])
 
 
+# In[42]:
+
+
+progs[progs['PRGM_NM']=='Transitions of Care - Post Discharge'].pivot_table(values='adm_30_after_TOC', index='PRGM_STOP_RSN', aggfunc=['count','mean'], dropna=True)
+
+
 # In[ ]:
 
 
-progs[progs['PRGM_NM']=='Transitions of Care - Post Discharge'].pivot_table(values='adm_30_after_TOC', index='PRGM_STOP_RSN', aggfunc=['count','mean'])
+## CHF difference of differences analysis.  
+
+
+# In[46]:
+
+
+progs[progs['PRGM_NM']=='DM - CLD'].pivot_table(values='adm_30_after', index='PRGM_STOP_RSN', aggfunc=['count','mean'], dropna=True)
+
+
+# In[ ]:
+
+
+## Hypothesis: Of discharged patients, most readmissions happen in the first 10 days. If this is true, how does it impact
+## our ability to use time cutoffs to groups patients into opt-ins or opt-outs?
+
+
+# In[87]:
+
+
+fighist_TOC = plt.figure(figsize=(12,6))
+ax1 = fighist_TOC.add_subplot(111)
+ax1.set_title('Histogram, Discharge to Next Admission, days (TOC)')
+ax1.hist(np.array(progs[progs['PRGM_NM']=='Transitions of Care - Post Discharge']['index_to_next_days'].dropna()), bins = 50, alpha = 0.4, density=1, label='TOC')
+ax1.set_ylabel('Percent of Patients')
+ax1.set_xlabel('days to next admission')
+ax1.set_xlim(left=0, right=200)
+ax1.legend();
 
