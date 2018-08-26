@@ -263,6 +263,12 @@ progs['lace_score'] = lace_scores
 # In[ ]:
 
 
+progs['lace_score'].fillna(float(progs['lace_score'].mean()), inplace=True)
+
+
+# In[ ]:
+
+
 first_admissions = find_first_admission_after_enroll(progs, admits)
 progs['frst_adm_aftr_enrl'] = first_admissions
 progs['frst_adm_aftr_enrl'] = pd.to_datetime(progs['frst_adm_aftr_enrl'])
@@ -272,7 +278,7 @@ progs['frst_adm_aftr_enrl'] = pd.to_datetime(progs['frst_adm_aftr_enrl'])
 
 
 ## function that counts the number of admits in a window AFTER a program begins
-def get_adm_after(programs, admissions, window_size=30):
+def get_adm_after(programs, admissions, window_size=90):
     admits_in_window = list(np.zeros(programs.shape[0]))
     for index, row in programs.iterrows():
         admit_pat = admissions[admissions['EMPI']==row['EMPI']]
@@ -304,7 +310,7 @@ def get_adm_after_TOC(programs, admissions, window_size=30):
 
 
 ## function that counts the number of admits in a window BEFORE a program begins
-def get_adm_before(programs, admissions, window_size=30):
+def get_adm_before(programs, admissions, window_size=90):
     admits_in_window = list(np.zeros(programs.shape[0]))
     for index, row in programs.iterrows():
         admit_pat = admissions[admissions['EMPI']==row['EMPI']]
@@ -321,7 +327,7 @@ def get_adm_before(programs, admissions, window_size=30):
 
 ## calc number of admits that occur within 30 day window after program begins
 thirty_day_after = get_adm_after(progs, admits)
-progs['adm_30_after'] = thirty_day_after
+progs['adm_90_after'] = thirty_day_after
 
 
 # In[ ]:
@@ -329,7 +335,7 @@ progs['adm_30_after'] = thirty_day_after
 
 ## calc number of admits that occur within 30 day window before program begins
 thirty_day_before = get_adm_before(progs, admits)
-progs['adm_30_before'] = thirty_day_before
+progs['adm_90_before'] = thirty_day_before
 
 
 # In[ ]:
@@ -342,8 +348,20 @@ progs['time_to_enroll'] = progs['time_to_enroll']/ timedelta(days=1)
 # In[ ]:
 
 
+progs['time_to_enroll'].fillna(float(progs['time_to_enroll'].mean()), inplace=True)
+
+
+# In[ ]:
+
+
 progs['prog_duration'] = progs['prog_end_date']-progs['prog_create_date']
 progs['prog_duration'] = progs['prog_duration']/ timedelta(days=1)
+
+
+# In[ ]:
+
+
+progs['prog_duration'].fillna(float(progs['prog_duration'].mean()), inplace=True)
 
 
 # In[ ]:
@@ -363,15 +381,40 @@ progs['adm_30_after_TOC'] = thirty_day_after_TOC
 # In[ ]:
 
 
+def adms_to_one_zero(progs):
+    adm_yn = []
+    for index, row in progs.iterrows():
+        if row['adm_30_after_TOC']>0:
+            adm_yn.append(1)
+        else:
+            adm_yn.append(0)
+    return adm_yn
+
+
+# In[ ]:
+
+
+adm_yn = adms_to_one_zero(progs)
+
+
+# In[ ]:
+
+
+progs['is_30_TOC_adm'] = adm_yn
+
+
+# In[ ]:
+
+
 fighist = plt.figure(figsize=(12,6))
 ax1 = fighist.add_subplot(111)
 ax1.set_title('Histogram, Days Program Duration')
 #ax1.hist(np.array(progs[progs['PRGM_NM']=='Transitions of Care - Post Discharge']['time_to_enroll'].dropna()), bins = 100, alpha = 0.4, density=1, label='TOC')
-ax1.hist(np.array(progs[progs['PRGM_NM']=='DM - CLD']['prog_duration'].dropna()), bins = 150, alpha = 0.3, density=1, label='CLD')
-ax1.hist(np.array(progs[progs['PRGM_NM']=='DM - HF']['prog_duration'].dropna()), bins = 150, alpha = 0.3, density=1, label='HF')
+ax1.hist(np.array(progs[progs['PRGM_NM']=='DM - CLD']['prog_duration'].dropna()), bins = 150, alpha = 0.6, density=1, label='CLD')
+ax1.hist(np.array(progs[progs['PRGM_NM']=='DM - HF']['prog_duration'].dropna()), bins = 150, alpha = 0.6, density=1, label='HF')
 ax1.set_ylabel('Percent of Patients')
 ax1.set_xlabel('Days in Program')
-ax1.set_xlim(left=-5, right=130)
+ax1.set_xlim(left=-5, right=150)
 ax1.legend();
 
 
@@ -382,8 +425,8 @@ fighist = plt.figure(figsize=(12,6))
 ax1 = fighist.add_subplot(111)
 ax1.set_title('Histogram, time to enroll post discharge')
 #ax1.hist(np.array(progs[progs['PRGM_NM']=='Transitions of Care - Post Discharge']['time_to_enroll'].dropna()), bins = 100, alpha = 0.4, density=1, label='TOC')
-ax1.hist(np.array(progs[progs['PRGM_NM']=='DM - CLD']['time_to_enroll'].dropna()), bins = 40, alpha = 0.3, density=1, label='CLD')
-ax1.hist(np.array(progs[progs['PRGM_NM']=='DM - HF']['time_to_enroll'].dropna()), bins = 40, alpha = 0.3, density=1, label='HF')
+ax1.hist(np.array(progs[progs['PRGM_NM']=='DM - CLD']['time_to_enroll'].dropna()), bins = 40, alpha = 0.6, density=1, label='CLD')
+ax1.hist(np.array(progs[progs['PRGM_NM']=='DM - HF']['time_to_enroll'].dropna()), bins = 40, alpha = 0.6, density=1, label='HF')
 ax1.set_ylabel('Percent of Patients')
 ax1.set_xlabel('days to enrollment')
 ax1.legend();
@@ -396,9 +439,9 @@ fighist_TOC = plt.figure(figsize=(12,6))
 ax1 = fighist_TOC.add_subplot(111)
 ax1.set_title('Histogram, Program Duration')
 ax1.hist(np.array((progs[(progs['PRGM_NM']=='Transitions of Care - Post Discharge') &
-                  (progs['is_optin']==0)]['prog_duration'].dropna())), bins = 100, alpha = 0.4, density=1, label='Opt-out')
+                  (progs['is_optin']==0)]['prog_duration'].dropna())), bins = 100, alpha = 0.6, density=1, color='grey', label='Opt-out')
 ax1.hist(np.array((progs[(progs['PRGM_NM']=='Transitions of Care - Post Discharge') &
-                  (progs['is_optin']==1)]['prog_duration'].dropna())), bins = 100, alpha = 0.4, density=1, label='Opt-in')
+                  (progs['is_optin']==1)]['prog_duration'].dropna())), bins = 100, alpha = 0.6, density=1, color='green', label='Opt-in')
 ax1.set_ylabel('Percent of Patients')
 ax1.set_xlabel('days in program')
 ax1.set_xlim(left=-5, right=50)
@@ -410,13 +453,13 @@ ax1.legend();
 
 fighist_TOC = plt.figure(figsize=(12,6))
 ax1 = fighist_TOC.add_subplot(111)
-ax1.set_title('Histogram, Program Duration, TOC')
+ax1.set_title('Histogram, Days to Enrollment, TOC')
 ax1.hist(np.array((progs[(progs['PRGM_NM']=='Transitions of Care - Post Discharge') &
-                  (progs['is_optin']==0)]['time_to_enroll'].dropna())), bins = 150, alpha = 0.4, density=1, label='Opt-out')
+                  (progs['is_optin']==0)]['time_to_enroll'].dropna())), bins = 150, alpha = 0.6, density=1, color='grey', label='Opt-out')
 ax1.hist(np.array((progs[(progs['PRGM_NM']=='Transitions of Care - Post Discharge') &
-                  (progs['is_optin']==1)]['time_to_enroll'].dropna())), bins = 150, alpha = 0.4, density=1, label='Opt-in')
+                  (progs['is_optin']==1)]['time_to_enroll'].dropna())), bins = 150, alpha = 0.6, density=1, color='green', label='Opt-in')
 ax1.set_ylabel('Percent of Patients')
-ax1.set_xlabel('days in program')
+ax1.set_xlabel('Days to Enrollment')
 ax1.set_xlim(left=0, right=50)
 ax1.legend();
 
@@ -427,11 +470,26 @@ ax1.legend();
 fighist_TOC = plt.figure(figsize=(12,6))
 ax1 = fighist_TOC.add_subplot(111)
 ax1.set_title('Histogram, time to enroll (TOC)')
-ax1.hist(np.array(progs[progs['PRGM_NM']=='Transitions of Care - Post Discharge']['time_to_enroll'].dropna()), bins = 200, alpha = 0.4, density=1, label='TOC')
+ax1.hist(np.array(progs[progs['PRGM_NM']=='Transitions of Care - Post Discharge']['time_to_enroll'].dropna()), bins = 200, alpha = .6, density=1, color='green', label='TOC')
 ax1.set_ylabel('Percent of Patients')
 ax1.set_xlabel('days to enrollment')
 ax1.set_xlim(left=0, right=40)
 ax1.legend();
+
+
+# In[ ]:
+
+
+fighist_TOC = plt.figure(figsize=(12,6))
+ax1 = fighist_TOC.add_subplot(111)
+ax1.set_title('Scatterplot, TOC Ages by Lace Scores')
+ax1.scatter(np.array(progs[progs['PRGM_NM']=='Transitions of Care - Post Discharge']['age'].dropna()),
+            np.array(progs[progs['PRGM_NM']=='Transitions of Care - Post Discharge']['lace_score'].dropna()))
+ax1.set_ylabel('Lace Score')
+ax1.set_xlabel('Age')
+#ax1.set_xlim(left=0, right=40)
+#ax1.legend()
+("")
 
 
 # In[ ]:
@@ -462,7 +520,16 @@ progs[progs['PRGM_NM']=='Transitions of Care - Post Discharge'].pivot_table(valu
 
 
 ## graph violinplots of optin vs. optout LACE Scores.
-sns.violinplot(x="is_optin", y='lace_score', data=progs)
+fighist_lace_age = plt.figure(figsize=(12,6))
+ax1 = fighist_lace_age.add_subplot(111)
+sns.boxplot(ax=ax1, x="lace_score", y='age', data=progs[progs['PRGM_NM']=='Transitions of Care - Post Discharge'])
+
+
+# In[ ]:
+
+
+## graph violinplots of optin vs. optout LACE Scores.
+sns.violinplot(x="is_optin", y='lace_score', data=progs[progs['PRGM_NM']=='Transitions of Care - Post Discharge'])
 
 
 # In[ ]:
@@ -488,25 +555,68 @@ progs[progs['PRGM_NM']=='DM - CLD'].pivot_table(values='adm_30_after', index='PR
 
 ## need to fill X vars' na with appropriate values:
 ## is_optin in - drop na rows
-## age - average
-## is_male - make them 0s
-## lace_score = average lace score
-## time_to_enroll = average
+## age - average - check
+## is_male - make them 0s - check
+## lace_score = average lace score - check
+## time_to_enroll = average - check
 ## prog duration - average
 
 
 # In[ ]:
 
 
-model = linear_model.LogisticRegression()
-y = np.array(progs['adm_30_after_TOC'])
-X = np.array(progs[['is_optin', 'age', 'is_male', 'lace_score', 'time_to_enroll', 'prog_duration']])
+infer_opts = progs[progs['is_optin'].isna()==False]
+
+
+# In[ ]:
+
+
+model = linear_model.LogisticRegression(C=100000)
+y = np.array(infer_opts['is_30_TOC_adm'])
+X = np.array(infer_opts[['is_optin', 'age', 'is_male', 'lace_score', 'time_to_enroll', 'prog_duration']])
 
 
 # In[ ]:
 
 
 model.fit(X, y)
+
+
+# In[ ]:
+
+
+model.coef_
+
+
+# In[ ]:
+
+
+coefs = model.coef_
+
+
+# In[ ]:
+
+
+inter = model.intercept_
+
+
+# In[ ]:
+
+
+np.exp((coefs[0][0:5] * [1,70,0,8,2]).sum() + inter)
+
+
+# In[ ]:
+
+
+np.exp(coefs)
+
+
+# In[ ]:
+
+
+## two to 1 odds means twice as likely than not - 66.6%  -- google how to interpret log odds and double check that
+## logisticRegress() returns log odds.
 
 
 # In[ ]:
@@ -522,7 +632,7 @@ model.fit(X, y)
 fighist_TOC = plt.figure(figsize=(12,6))
 ax1 = fighist_TOC.add_subplot(111)
 ax1.set_title('Histogram, Discharge to Next Admission, days (TOC)')
-ax1.hist(np.array(progs[progs['PRGM_NM']=='Transitions of Care - Post Discharge']['index_to_next_days'].dropna()), bins = 50, alpha = 0.4, density=1, label='TOC')
+ax1.hist(np.array(progs[progs['PRGM_NM']=='Transitions of Care - Post Discharge']['index_to_next_days'].dropna()), bins = 50, alpha = 0.8, density=1, label='TOC')
 ax1.set_ylabel('Percent of Patients')
 ax1.set_xlabel('days to next admission')
 ax1.set_xlim(left=0, right=200)
@@ -533,4 +643,92 @@ ax1.legend();
 
 
 progs.head()
+
+
+# In[ ]:
+
+
+pwd
+
+
+# In[ ]:
+
+
+progs.to_csv('data/progs.csv')
+
+
+# In[ ]:
+
+
+progs.head()
+
+
+# In[ ]:
+
+
+## Initial numbers for HF Difference of Differences
+
+
+# In[ ]:
+
+
+progs[(progs['PRGM_NM']=='DM - HF') & 
+      (progs['is_optin']==1) &
+      (progs['prog_create_date']<'2018-05-01')]['adm_90_before'].mean()
+
+
+# In[ ]:
+
+
+progs[(progs['PRGM_NM']=='DM - HF') & 
+      (progs['is_optin']==1) &
+      (progs['prog_create_date']<'2018-05-01')]['adm_90_after'].mean()
+
+
+# In[ ]:
+
+
+progs[(progs['PRGM_NM']=='DM - HF') & 
+      (progs['is_optin']==0) &
+      (progs['prog_create_date']<'2018-05-01')]['adm_90_before'].mean()
+
+
+# In[ ]:
+
+
+progs[(progs['PRGM_NM']=='DM - HF') & 
+      (progs['is_optin']==0) &
+      (progs['prog_create_date']<'2018-05-01')]['adm_90_after'].mean()
+
+
+# In[ ]:
+
+
+progs[(progs['PRGM_NM']=='DM - CLD') & 
+      (progs['is_optin']==1) &
+      (progs['prog_create_date']<'2018-05-01')]['adm_90_before'].mean()
+
+
+# In[ ]:
+
+
+progs[(progs['PRGM_NM']=='DM - CLD') & 
+      (progs['is_optin']==1) &
+      (progs['prog_create_date']<'2018-05-01')]['adm_90_after'].mean()
+
+
+# In[ ]:
+
+
+progs[(progs['PRGM_NM']=='DM - CLD') & 
+      (progs['is_optin']==0) &
+      (progs['prog_create_date']<'2018-05-01')]['adm_90_before'].count()
+
+
+# In[ ]:
+
+
+progs[(progs['PRGM_NM']=='DM - CLD') & 
+      (progs['is_optin']==0) &
+      (progs['prog_create_date']<'2018-05-01')]['adm_90_after'].mean()
 
