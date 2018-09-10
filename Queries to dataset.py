@@ -18,7 +18,7 @@ pd.set_option('display.max_rows', 500)
 get_ipython().run_line_magic('matplotlib', 'inline')
 
 
-# In[ ]:
+# In[263]:
 
 
 ## READ In Programs, Admissions, and Lace data
@@ -26,31 +26,37 @@ get_ipython().run_line_magic('matplotlib', 'inline')
 progs = pd.read_csv('data/Program_Patdim.csv')
 
 
-# In[ ]:
+# In[264]:
 
 
 admits = pd.read_csv('data/admissions.csv', sep='|', low_memory=False)
 
 
-# In[ ]:
+# In[265]:
 
 
 LACE = pd.read_csv('data/lace_empi', sep='|')
 
 
-# In[ ]:
+# In[266]:
 
 
 assess = pd.read_csv('data/assessments.csv.sql', sep='|', low_memory=False)
 
 
-# In[ ]:
+# In[267]:
+
+
+assess_toc_mcg_dmg =pd.read_csv('data/TOC_MCG_DMG_ASES_ONLY.rpt', sep='|', low_memory=False)
+
+
+# In[268]:
 
 
 ## Cleaning, field removal, and data type changes
 
 
-# In[ ]:
+# In[269]:
 
 
 ## convert dates to date time
@@ -59,7 +65,7 @@ progs['date_of_birth'] = pd.to_datetime(progs['DOB'])
 progs['prog_end_date'] = pd.to_datetime(progs['END_TMS'])
 
 
-# In[ ]:
+# In[270]:
 
 
 ## replace sex with is_male
@@ -72,19 +78,15 @@ progs['is_optin'] = progs['PRGM_STOP_RSN'].replace(opt_in)
 # progs['is_male'].fillna(0, inplace=True)
 
 
-# In[ ]:
+# In[271]:
 
 
 admits['EMPI'].fillna(999999999, inplace=True)
 
-
-# In[ ]:
-
-
 admits['EMPI'] = admits['EMPI'].astype(int)
 
 
-# In[ ]:
+# In[273]:
 
 
 ## replace date_of _ birth with age
@@ -93,7 +95,7 @@ progs['age'] = progs['age'] / timedelta(days=1) / 365
 progs['age'].fillna(float(progs['age'].mean()), inplace=True)
 
 
-# In[ ]:
+# In[274]:
 
 
 new_sex = {'F':0, 'M':1}
@@ -101,7 +103,7 @@ progs['is_male'] = progs['Sex'].replace(new_sex)
 progs['is_male'].fillna(0, inplace=True)
 
 
-# In[ ]:
+# In[275]:
 
 
 ## drop unneeded columns
@@ -109,19 +111,19 @@ prog_cols_drop = ['PTNT_DK', 'PTNT_DK.1', 'DOB', 'Sex', 'CRT_TMS', 'END_TMS', 'T
 progs = progs.drop(prog_cols_drop, axis=1)
 
 
-# In[ ]:
+# In[276]:
 
 
 progs = progs[(progs['prog_create_date']>'2018-04-01') & (progs['prog_create_date']<'2018-08-01')]
 
 
-# In[ ]:
+# In[277]:
 
 
 progs = progs.reset_index()
 
 
-# In[ ]:
+# In[278]:
 
 
 ## convert object columns to categoricals
@@ -129,7 +131,7 @@ for col in ['RGON_NM', 'HP_NM', 'LOB_SUB_CGY', 'PRGM_NM', 'PRGM_STOP_RSN']:
     progs[col] = progs[col].astype('category')
 
 
-# In[ ]:
+# In[279]:
 
 
 ## convert dates to date time
@@ -137,7 +139,7 @@ admits['admit_date'] = pd.to_datetime(admits['AdmitDt'])
 admits['discharge_date'] = pd.to_datetime(admits['DischDt'])
 
 
-# In[ ]:
+# In[280]:
 
 
 ## replace Model with is_group
@@ -146,7 +148,7 @@ admits['is_group'] = admits['Model'].replace(new_Model)
 admits['is_group'].fillna(0, inplace=True)
 
 
-# In[ ]:
+# In[281]:
 
 
 ## drop unneeded columns
@@ -155,21 +157,28 @@ admits_cols_drop = ['Model', 'PCP', 'MM', 'MRN', 'LastName',
 admits = admits.drop(admits_cols_drop, axis=1)
 
 
-# In[ ]:
+# In[282]:
 
 
 assess['ASES_DT'] = pd.to_datetime(assess['ASES_DT'])
 assess['EFF_FM_TS'] = pd.to_datetime(assess['EFF_FM_TS'])
 
 
-# In[ ]:
+# In[283]:
+
+
+assess_toc_mcg_dmg['ASES_DT'] = pd.to_datetime(assess_toc_mcg_dmg['ASES_DT'])
+assess_toc_mcg_dmg['EFF_FM_TS'] = pd.to_datetime(assess_toc_mcg_dmg['EFF_FM_TS'])
+
+
+# In[284]:
 
 
 new_text = {'Successful (enter number you\'re calling)':'Success'}
 assess['ANSR_TXT'] = assess['ANSR_TXT'].replace(new_text)
 
 
-# In[ ]:
+# In[285]:
 
 
 ## change objects to categories
@@ -179,33 +188,33 @@ for col in cols_to_category:
     admits[col] = admits[col].astype('category')
 
 
-# In[ ]:
+# In[286]:
 
 
 ## update LACE score data
 LACE['ASES_DT'] = pd.to_datetime(LACE['ASES_DT'])
 
 
-# In[ ]:
+# In[287]:
 
 
 ## create new columns using functions and the admits data
 
 
-# In[ ]:
+# In[288]:
 
 
 admits_all = admits
 
 
-# In[ ]:
+# In[289]:
 
 
 ## only keep acute admissions
 admits = admits[admits['Acuity']=='ACUTE']
 
 
-# In[ ]:
+# In[290]:
 
 
 ## function that finds the most recent discharge before a program begins
@@ -225,7 +234,7 @@ def find_index_admit(programs, admissions):
     return index_dates
 
 
-# In[ ]:
+# In[291]:
 
 
 index_dates = find_index_admit(progs, admits_all)
@@ -233,7 +242,7 @@ progs['index_date'] = index_dates
 progs['index_date'] = pd.to_datetime(progs['index_date'])
 
 
-# In[ ]:
+# In[292]:
 
 
 ## function that finds the first admission after a program begins
@@ -253,7 +262,7 @@ def find_first_admission_after_enroll(programs, admissions):
     return first_admission
 
 
-# In[ ]:
+# In[293]:
 
 
 first_admissions = find_first_admission_after_enroll(progs, admits)
@@ -261,7 +270,7 @@ progs['frst_adm_aftr_enrl'] = first_admissions
 progs['frst_adm_aftr_enrl'] = pd.to_datetime(progs['frst_adm_aftr_enrl'])
 
 
-# In[ ]:
+# In[294]:
 
 
 ## function that finds the LACE score that occurred within 10 days (prior) to program start date
@@ -281,20 +290,33 @@ def find_lace_prior_to_enroll(programs, lace, window_size=40):
     return lace_scores
 
 
-# In[ ]:
+# In[295]:
 
 
 lace_scores = find_lace_prior_to_enroll(progs, LACE)
 progs['lace_score'] = lace_scores
 
 
-# In[ ]:
+# In[296]:
 
 
-##progs['lace_score'].fillna(float(progs['lace_score'].median()), inplace=True)
+progs[(progs['PRGM_NM']=='Transitions of Care - Post Discharge') | 
+      (progs['PRGM_NM']=='Transitions of Care - ED')].count()
 
 
-# In[ ]:
+# In[297]:
+
+
+len(set(assess['PTNT_ASES_DK']))
+
+
+# In[298]:
+
+
+progs['lace_score'].fillna(6, inplace=True)
+
+
+# In[299]:
 
 
 def find_assessments_during_program(programs, assess, ases_nm='TOC Post Discharge Outreach'):
@@ -304,18 +326,61 @@ def find_assessments_during_program(programs, assess, ases_nm='TOC Post Discharg
     for index, row in programs.iterrows():
         assess_pat = assess[(assess['EMPI']==row['EMPI']) &
                              (assess['ASES_DT'] > (row['prog_create_date']-timedelta(days=10))) &
-                             (assess['ASES_DT'] < (row['prog_create_date']-timedelta(days=35)))]
+                             (assess['ASES_DT'] < (row['prog_create_date']+timedelta(days=35)))]
         assess_cnt[index] = assess_pat.shape[0]
     return assess_cnt
 
 
-# In[ ]:
+# In[300]:
+
+
+def adms_to_one_zero_v2(ases):
+    ases_yn = []
+    for num in ases:
+        if num>0:
+            ases_yn.append(1)
+        else:
+            ases_yn.append(0)
+    return ases_yn
+
+
+# In[301]:
+
+
+cm_toc_ases = find_assessments_during_program(progs, assess_toc_mcg_dmg, ases_nm='MCG - DMG - Post-Hospitalization Follow-Up')
+
+
+# In[302]:
+
+
+len(cm_toc_ases)
+
+
+# In[303]:
+
+
+cm_toc_ases = adms_to_one_zero_v2(cm_toc_ases)
+
+
+# In[304]:
+
+
+len(cm_toc_ases)
+
+
+# In[305]:
+
+
+progs['cm_touch_yn'] = cm_toc_ases
+
+
+# In[306]:
 
 
 ases_nm = 'CM Medication Reconciliation'
 
 
-# In[ ]:
+# In[310]:
 
 
 ## subset assessment to only include questions where the answer = "Success"
@@ -326,27 +391,44 @@ progs['success_TOCPDO_cnt'] = TOCPDO_cnt
 
 # We hope to include "Medication Reconciliation" and "Post Hospitalization Follow-up" to the model, but currently these assessments only date back to mid-August, and therefore don't cover patients in TOC since April.
 
-# In[ ]:
+# In[311]:
 
 
-def feature_from_assessment_text(programs, assess, ases_nm='TOC Post Discharge Outreach',
-                                 qstn_txt='Indicate the Documents Reviewed',
-                                ansr_txt='Discharge Summary'):
-    assess = assess[(assess['ASES_NM']==ases_nm) & 
-                    (assess['QSTN_TXT']==qstn_txt) &
-                    (assess['ANSR_TXT']==ansr_txt)]
+def feature_from_assessment_text(programs, assess):
+    assess = assess[(assess['ASES_NM']=='TOC Post Discharge Outreach') & 
+                    (assess['ANSR_TXT']=='Success') |
+                    (assess['ANSR_TXT']=='Continue TOC')]
     values_return = np.zeros(programs.shape[0])
     values_return = list(values_return)
     for index, row in programs.iterrows():
         assess_pat = assess[(assess['EMPI']==row['EMPI']) &
                              (assess['ASES_DT'] > (row['prog_create_date']-timedelta(days=10))) &
-                             (assess['ASES_DT'] < (row['prog_create_date']-timedelta(days=35)))]
-        if assess_pat.shape[0] > 0:
-            values_return[index]=1
+                             (assess['ASES_DT'] < (row['prog_create_date']+timedelta(days=35)))]
+        individual = list(set(assess_pat['PTNT_ASES_DK']))
+        print(individual)
+        count=0
+        for assess in individual:
+            touches = assess_pat[assess_pat['PTNT_ASES_DK']==assess]
+            for index2, row2 in touches.iterrows():
+                if (row2['ANSR_TXT']=='Success') | (row2['ANSR_TXT']=='Continue TOC'):
+                    count+=1
+        values_return[index]=count
     return values_return
 
 
-# In[ ]:
+# In[312]:
+
+
+assess.columns
+
+
+# In[313]:
+
+
+list(set(assess['EMPI'][0:20]))
+
+
+# In[314]:
 
 
 docrev_dissum = feature_from_assessment_text(progs, assess, ases_nm='TOC Post Discharge Outreach',
@@ -439,19 +521,25 @@ progs['agree_care_plan'] = agree_care_plan
 # In[ ]:
 
 
+assess_success = assess[(assess['ANSR_TXT']=='Continue TOC') | (assess['ANSR_TXT']=='Success')]
+
+
+# In[ ]:
+
+
 
 ##medrec_cnt = find_assessments_during_program(progs,assess, ases_nm='CM Medication Reconciliation')
 ##progs['medrec_cnt']=medrec_cnt
 
 
-# In[ ]:
+# In[315]:
 
 
 ##phfu_cnt = find_assessments_during_program(progs ,assess, ases_nm='Post-Hospitalization Follow-up')
 ##progs['phfu_cnt']=phfu_cnt
 
 
-# In[ ]:
+# In[316]:
 
 
 ## function that counts the number of admits in a window AFTER a program begins
@@ -467,7 +555,7 @@ def get_adm_after(programs, admissions, window_size=90):
     return admits_in_window
 
 
-# In[ ]:
+# In[317]:
 
 
 ## calc number of admits that occur within 30 day window after program begins
@@ -475,7 +563,7 @@ thirty_day_after = get_adm_after(progs, admits)
 progs['adm_90_after'] = thirty_day_after
 
 
-# In[ ]:
+# In[320]:
 
 
 ## function that counts the number of admits in a window AFTER a program begins
@@ -491,7 +579,7 @@ def get_adm_after_TOC(programs, admissions, window_size=30):
     return admits_in_window
 
 
-# In[ ]:
+# In[321]:
 
 
 thirty_day_after_TOC = get_adm_after_TOC(progs, admits)
@@ -499,6 +587,16 @@ progs['adm_30_after_TOC'] = thirty_day_after_TOC
 
 
 # In[ ]:
+
+
+## function that counts relevant touches during a care management program
+#def count_touches_that_count(programs, assessments):
+#    touches_that_count = list(np.zeros(programs.shape[0]))
+#    for index, row in programs.iterrows():
+#        assess
+
+
+# In[322]:
 
 
 ## function that counts the number of admits in a window BEFORE a program begins
@@ -514,7 +612,7 @@ def get_adm_before(programs, admissions, window_size=90):
     return admits_in_window
 
 
-# In[ ]:
+# In[323]:
 
 
 ## calc number of admits that occur within 30 day window before program begins
@@ -522,40 +620,40 @@ thirty_day_before = get_adm_before(progs, admits)
 progs['adm_90_before'] = thirty_day_before
 
 
-# In[ ]:
+# In[324]:
 
 
 progs['time_to_enroll'] = progs['prog_create_date']-progs['index_date']
 progs['time_to_enroll'] = progs['time_to_enroll']/ timedelta(days=1)
 
 
-# In[ ]:
+# In[325]:
 
 
 progs['time_to_enroll'].fillna(float(progs['time_to_enroll'].mean()), inplace=True)
 
 
-# In[ ]:
+# In[326]:
 
 
 progs['prog_duration'] = progs['prog_end_date']-progs['prog_create_date']
 progs['prog_duration'] = progs['prog_duration']/ timedelta(days=1)
 
 
-# In[ ]:
+# In[327]:
 
 
 progs['prog_duration'].fillna(float(progs['prog_duration'].mean()), inplace=True)
 
 
-# In[ ]:
+# In[328]:
 
 
 progs['index_to_next_days'] = progs['frst_adm_aftr_enrl']-progs['index_date']
 progs['index_to_next_days'] = progs['index_to_next_days']/ timedelta(days=1)
 
 
-# In[ ]:
+# In[329]:
 
 
 def adms_to_one_zero(progs):
@@ -568,13 +666,13 @@ def adms_to_one_zero(progs):
     return adm_yn
 
 
-# In[ ]:
+# In[330]:
 
 
 adm_yn = adms_to_one_zero(progs)
 
 
-# In[ ]:
+# In[331]:
 
 
 progs['is_30_TOC_adm'] = adm_yn
@@ -687,13 +785,7 @@ ax1.set_xlabel('Age')
 ("")
 
 
-# In[ ]:
-
-
-progs.pivot_table(values='EMPI', index='PRGM_NM', aggfunc=['count'])
-
-
-# In[ ]:
+# In[332]:
 
 
 progs[progs['PRGM_NM']=='Transitions of Care - Post Discharge'].pivot_table(values='adm_30_after_TOC', index='PRGM_STOP_RSN', aggfunc=['count','mean'], dropna=True)
@@ -705,7 +797,7 @@ progs[progs['PRGM_NM']=='Transitions of Care - Post Discharge'].pivot_table(valu
 ## Understand relationship between LACE and time to enroll
 
 
-# In[ ]:
+# In[333]:
 
 
 progs[progs['PRGM_NM']=='Transitions of Care - Post Discharge'].pivot_table(values='adm_30_after_TOC', index='lace_score', columns='is_optin', aggfunc=['count','mean'], dropna=True)
@@ -751,66 +843,90 @@ sns.violinplot(x="is_optin", y='lace_score', data=progs[progs['PRGM_NM']=='Trans
 ## prog duration - average
 
 
+# In[353]:
+
+
+progs = progs[progs['is_optin'].isna()==False]
+
+
 # In[ ]:
 
 
-infer_opts = progs[progs['is_optin'].isna()==False]
+progs.head()
 
 
-# In[ ]:
+# In[335]:
 
 
 model = linear_model.LogisticRegression(C=100000)
-y = np.array(infer_opts['is_30_TOC_adm'])
-X = np.array(infer_opts[['is_optin', 'age', 'is_male', 'lace_score', 'time_to_enroll', 'prog_duration']])
+y = np.array(progs['is_30_TOC_adm'])
+X = np.array(progs[['cm_touch_yn', 'age', 'is_male', 'lace_score', 'time_to_enroll', 'prog_duration']])
 
 
-# In[ ]:
+# In[336]:
 
 
 model.fit(X, y)
 
 
-# In[ ]:
+# In[337]:
 
 
 model.coef_
 
 
-# In[ ]:
+# In[338]:
 
 
 coefs = model.coef_
 
 
-# In[ ]:
+# In[339]:
+
+
+coefs
+
+
+# In[340]:
 
 
 np.exp(coefs)
 
 
-# In[ ]:
+# In[341]:
 
 
 inter = model.intercept_
 
 
-# In[ ]:
+# In[342]:
 
 
 inter
 
 
-# In[ ]:
+# In[351]:
 
 
 np.exp((coefs[0][0:5] * [0,70,0,8,2]).sum() + inter)
 
 
+# In[349]:
+
+
+.12/1.12
+
+
+# In[354]:
+
+
+progs.pivot_table('index', 'is_optin', 'cm_touch_yn', aggfunc='count')
+
+
 # In[ ]:
 
 
-np.exp(coefs)
+np.eaxp(coefs)
 
 
 # In[ ]:
@@ -915,12 +1031,6 @@ progs[(progs['PRGM_NM']=='DM - CLD') &
 
 progs[(progs['PRGM_NM']=='DM - CLD') & 
       (progs['prog_create_date']<'2018-05-01')].pivot_table(values='adm_90_after', index='is_optin', aggfunc='mean') 
-
-
-# In[ ]:
-
-
-progs.pivot_table(values='is_30_TOC_adm', index='lace_score', aggfunc=['count','mean'])
 
 
 # In[ ]:
