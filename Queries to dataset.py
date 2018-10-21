@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import pandas as pd
@@ -25,7 +25,7 @@ get_ipython().run_line_magic('matplotlib', 'inline')
 
 # ## Functions
 
-# In[ ]:
+# In[2]:
 
 
 ## function that finds the most recent discharge before a program begins
@@ -45,7 +45,7 @@ def find_index_admit(programs, admissions):
     return index_dates
 
 
-# In[ ]:
+# In[3]:
 
 
 ## function that finds the first admission after a program begins
@@ -65,7 +65,7 @@ def find_first_admission_after_enroll(programs, admissions):
     return first_admission
 
 
-# In[ ]:
+# In[4]:
 
 
 ## function that finds the LACE score that occurred within 10 days (prior) to program start date
@@ -85,7 +85,7 @@ def find_lace_prior_to_enroll(programs, lace, window_size=40):
     return lace_scores
 
 
-# In[ ]:
+# In[5]:
 
 
 def find_assessments_during_program(programs, assess, ases_nm='TOC Post Discharge Outreach'):
@@ -100,7 +100,7 @@ def find_assessments_during_program(programs, assess, ases_nm='TOC Post Discharg
     return assess_cnt
 
 
-# In[ ]:
+# In[6]:
 
 
 def find_assessments_during_program_chf(programs, assess):
@@ -114,7 +114,7 @@ def find_assessments_during_program_chf(programs, assess):
     return assess_cnt
 
 
-# In[ ]:
+# In[7]:
 
 
 def find_assessments_during_program_all(programs, assess, list_of_assessments):
@@ -133,7 +133,7 @@ def find_assessments_during_program_all(programs, assess, list_of_assessments):
     return assess_cnt
 
 
-# In[ ]:
+# In[8]:
 
 
 def count_ases(assess_all):
@@ -148,7 +148,7 @@ def count_ases(assess_all):
     return counts_ases
 
 
-# In[ ]:
+# In[9]:
 
 
 def adms_to_one_zero_v2(ases):
@@ -161,7 +161,20 @@ def adms_to_one_zero_v2(ases):
     return ases_yn
 
 
-# In[ ]:
+# In[10]:
+
+
+def to_one_zero(probas, value):
+    ones_zeros = []
+    for num in probas:
+        if num>value:
+            ones_zeros.append(1)
+        else:
+            ones_zeros.append(0)
+    return np.array(ones_zeros)
+
+
+# In[11]:
 
 
 def feature_from_assessment_text(programs, assess):
@@ -186,7 +199,7 @@ def feature_from_assessment_text(programs, assess):
     return values_return
 
 
-# In[ ]:
+# In[12]:
 
 
 ## function that counts the number of admits in a window AFTER a program begins
@@ -206,7 +219,7 @@ def get_adm_after(programs, admissions, window_size=90):
     return admits_in_window, beddays_in_window
 
 
-# In[ ]:
+# In[13]:
 
 
 ## function that counts the number of admits in a window BEFORE a program begins
@@ -226,7 +239,7 @@ def get_adm_before(programs, admissions, window_size=90):
     return admits_in_window, beddays_in_window
 
 
-# In[ ]:
+# In[14]:
 
 
 ## function that counts the number of admits in a window AFTER a program begins
@@ -242,7 +255,7 @@ def get_adm_after_TOC(programs, admissions, window_size=30):
     return admits_in_window
 
 
-# In[ ]:
+# In[15]:
 
 
 def adms_to_one_zero(progs, field):
@@ -255,7 +268,7 @@ def adms_to_one_zero(progs, field):
     return adm_yn
 
 
-# In[ ]:
+# In[16]:
 
 
 def plotroc(TPR, FPR):
@@ -274,23 +287,23 @@ def plotroc(TPR, FPR):
     plt.show()
 
 
-# In[ ]:
+# In[17]:
 
 
-def bootstrap_ci_coefficients(X_train, y_train, num_bootstraps, class_weight=class_weight):
+def bootstrap_ci_coefficients(X_train, y_train, num_bootstraps, class_weight={0: 1, 1: 1}):
     bootstrap_estimates = []
     for i in np.arange(num_bootstraps):
         sample_index = np.random.choice(range(0, len(y_train)), len(y_train))
         X_samples = X_train[sample_index]
         y_samples = y_train[sample_index]
-        lm = linear_model.LogisticRegression(class_weight=class_weight, penalty='l1', C=1)
+        lm = linear_model.LogisticRegression(class_weight=class_weight, penalty='l2', C=1)
         lm.fit(X_samples, y_samples)
         bootstrap_estimates.append(lm.coef_[0])
     bootstrap_estimates = np.asarray(bootstrap_estimates)
     return bootstrap_estimates
 
 
-# In[ ]:
+# In[18]:
 
 
 def bootstrap_ci_coefficients_lin(X_train, y_train, num_bootstraps):
@@ -306,9 +319,49 @@ def bootstrap_ci_coefficients_lin(X_train, y_train, num_bootstraps):
     return bootstrap_estimates
 
 
+# In[19]:
+
+
+def tag_copd_admissions(dm_progs, rel_admits):
+    dm_admit_yn = list(np.zeros(rel_admits.shape[0]))
+    dm_optin_yn = np.empty(rel_admits.shape[0])
+    dm_optin_yn[:] = np.nan
+    dm_optin_yn = list(dm_optin_yn)
+    dm_week = np.empty(rel_admits.shape[0])
+    dm_week[:] = np.nan
+    dm_week = list(dm_optin_yn)
+    for index, row in dm_progs.iterrows():
+        for index2, row2 in rel_admits.iterrows():
+            if (row2['EMPI']==row['EMPI']) & (row2['admit_date'] > (row['prog_create_date']-timedelta(days=90))) & (row2['admit_date'] < (row['prog_create_date']+timedelta(days=90))):
+                dm_admit_yn[index] = 1
+                dm_optin_yn[index] = (row['copd_ases_dur_copd']>0)
+                dm_week[index] = int(((row2['admit_date']-row['prog_create_date'])/timedelta(days=1))/7)
+    return dm_admit_yn, dm_optin_yn, dm_week
+
+
+# In[20]:
+
+
+def tag_chf_admissions(dm_progs, rel_admits):
+    dm_admit_yn = list(np.zeros(rel_admits.shape[0]))
+    dm_optin_yn = np.empty(rel_admits.shape[0])
+    dm_optin_yn[:] = np.nan
+    dm_optin_yn = list(dm_optin_yn)
+    dm_week = np.empty(rel_admits.shape[0])
+    dm_week[:] = np.nan
+    dm_week = list(dm_optin_yn)
+    for index, row in dm_progs.iterrows():
+        for index2, row2 in rel_admits.iterrows():
+            if (row2['EMPI']==row['EMPI']) & (row2['admit_date'] > (row['prog_create_date']-timedelta(days=90))) & (row2['admit_date'] < (row['prog_create_date']+timedelta(days=90))):
+                dm_admit_yn[index] = 1
+                dm_optin_yn[index] = (row['chf_ases_dur_chf']>0)
+                dm_week[index] = int(((row2['admit_date']-row['prog_create_date'])/timedelta(days=1))/7)
+    return dm_admit_yn, dm_optin_yn, dm_week
+
+
 # ## Read in Data
 
-# In[ ]:
+# In[21]:
 
 
 ## READ In Programs, Admissions, and Lace data
@@ -316,19 +369,19 @@ def bootstrap_ci_coefficients_lin(X_train, y_train, num_bootstraps):
 progs = pd.read_csv('data/Program_Patdim.csv', sep='|', low_memory=False)
 
 
-# In[ ]:
+# In[22]:
 
 
 admits = pd.read_csv('data/admissions.csv', sep='|', low_memory=False)
 
 
-# In[ ]:
+# In[23]:
 
 
 assess = pd.read_csv('data/assessments.csv.sql', sep='|', low_memory=False)
 
 
-# In[ ]:
+# In[24]:
 
 
 ## Cleaning, field removal, and data type changes
@@ -336,7 +389,7 @@ assess = pd.read_csv('data/assessments.csv.sql', sep='|', low_memory=False)
 
 # ## Clean Data
 
-# In[ ]:
+# In[25]:
 
 
 ## convert dates to date time
@@ -345,7 +398,7 @@ progs['date_of_birth'] = pd.to_datetime(progs['DOB'])
 progs['prog_end_date'] = pd.to_datetime(progs['END_TMS'])
 
 
-# In[ ]:
+# In[26]:
 
 
 ## replace sex with is_male
@@ -358,7 +411,7 @@ progs['is_optin'] = progs['PRGM_STOP_RSN'].replace(opt_in)
 # progs['is_male'].fillna(0, inplace=True)
 
 
-# In[ ]:
+# In[27]:
 
 
 ## replace date_of _ birth with age
@@ -367,7 +420,7 @@ progs['age'] = progs['age'] / timedelta(days=1) / 365
 progs['age'].fillna(float(progs['age'].mean()), inplace=True)
 
 
-# In[ ]:
+# In[28]:
 
 
 new_sex = {'F':0, 'M':1}
@@ -375,7 +428,7 @@ progs['is_male'] = progs['Sex'].replace(new_sex)
 progs['is_male'].fillna(0, inplace=True)
 
 
-# In[ ]:
+# In[29]:
 
 
 ## drop unneeded columns
@@ -383,25 +436,25 @@ prog_cols_drop = ['PTNT_DK', 'DOB', 'Sex', 'ASGN_TMS', 'END_TMS', 'TNT_MKT_BK', 
 progs = progs.drop(prog_cols_drop, axis=1)
 
 
-# In[ ]:
+# In[30]:
 
 
 progs = progs[(progs['prog_create_date']>'2018-04-01') & (progs['prog_create_date']<'2018-09-01')]
 
 
-# In[ ]:
+# In[31]:
 
 
 progs['EMPI'] = progs['EMPI'].astype(int)
 
 
-# In[ ]:
+# In[32]:
 
 
 progs = progs.reset_index()
 
 
-# In[ ]:
+# In[33]:
 
 
 ## convert object columns to categoricals
@@ -409,7 +462,7 @@ for col in ['RGON_NM', 'HP_NM', 'LOB_SUB_CGY', 'PRGM_NM', 'PRGM_STOP_RSN']:
     progs[col] = progs[col].astype('category')
 
 
-# In[ ]:
+# In[34]:
 
 
 admits['EMPI'].fillna(999999999, inplace=True)
@@ -417,7 +470,7 @@ admits['EMPI'].fillna(999999999, inplace=True)
 admits['EMPI'] = admits['EMPI'].astype(int)
 
 
-# In[ ]:
+# In[35]:
 
 
 ## convert dates to date time
@@ -425,7 +478,7 @@ admits['admit_date'] = pd.to_datetime(admits['AdmitDt'])
 admits['discharge_date'] = pd.to_datetime(admits['DischDt'])
 
 
-# In[ ]:
+# In[36]:
 
 
 ## replace Model with is_group
@@ -434,7 +487,7 @@ admits['is_group'] = admits['Model'].replace(new_Model)
 admits['is_group'].fillna(0, inplace=True)
 
 
-# In[ ]:
+# In[37]:
 
 
 ## drop unneeded columns
@@ -443,28 +496,28 @@ admits_cols_drop = ['Model', 'PCP', 'MM', 'MRN', 'LastName',
 admits = admits.drop(admits_cols_drop, axis=1)
 
 
-# In[ ]:
+# In[38]:
 
 
 ## REmove assessments with weird filler date '2917-12-26 00:00:00.000'
 assess = assess[assess['ASES_DT']!='2917-12-26 00:00:00.000']
 
 
-# In[ ]:
+# In[39]:
 
 
 assess['ASES_DT'] = pd.to_datetime(assess['ASES_DT'])
 assess['EFF_FM_TS'] = pd.to_datetime(assess['EFF_FM_TS'])
 
 
-# In[ ]:
+# In[40]:
 
 
 new_text = {'Successful (enter number you\'re calling)':'Success'}
 assess['ANSR_TXT'] = assess['ANSR_TXT'].replace(new_text)
 
 
-# In[ ]:
+# In[41]:
 
 
 ## change objects to categories
@@ -474,32 +527,32 @@ for col in cols_to_category:
     admits[col] = admits[col].astype('category')
 
 
-# In[ ]:
+# In[42]:
 
 
 ## find the set of all PTNT_ASES_DK, will be used to loop through
 
 
-# In[ ]:
+# In[43]:
 
 
 ## create new columns using functions and the admits data
 
 
-# In[ ]:
+# In[44]:
 
 
 admits_all = admits
 
 
-# In[ ]:
+# In[45]:
 
 
 ## only keep acute admissions
 admits = admits[admits['Acuity']=='ACUTE']
 
 
-# In[ ]:
+# In[46]:
 
 
 readmits = admits[admits['READMIT_N']==1]
@@ -507,7 +560,7 @@ readmits = admits[admits['READMIT_N']==1]
 
 # ## Feature Engineering
 
-# In[ ]:
+# In[47]:
 
 
 index_dates = find_index_admit(progs, admits_all)
@@ -515,7 +568,7 @@ progs['index_date'] = index_dates
 progs['index_date'] = pd.to_datetime(progs['index_date'])
 
 
-# In[ ]:
+# In[48]:
 
 
 first_admissions = find_first_admission_after_enroll(progs, admits)
@@ -523,20 +576,20 @@ progs['frst_adm_aftr_enrl'] = first_admissions
 progs['frst_adm_aftr_enrl'] = pd.to_datetime(progs['frst_adm_aftr_enrl'])
 
 
-# In[ ]:
+# In[49]:
 
 
 LACE = assess[assess['ASES_NM']=='LACE']
 
 
-# In[ ]:
+# In[50]:
 
 
 lace_scores = find_lace_prior_to_enroll(progs, LACE)
 progs['lace_score'] = lace_scores
 
 
-# In[ ]:
+# In[51]:
 
 
 ## create count and y/n columns
@@ -546,7 +599,7 @@ progs['cnt_toc_cm_touch'] = cm_toc_ases
 progs['toc_cm_touch_yn'] = cm_toc_ases2
 
 
-# In[ ]:
+# In[52]:
 
 
 # ## subset assessment to only include questions where the answer = "Success"
@@ -557,7 +610,7 @@ progs['toc_cm_touch_yn'] = cm_toc_ases2
 
 # We hope to include "Medication Reconciliation" and "Post Hospitalization Follow-up" to the model, but currently these assessments only date back to mid-August, and therefore don't cover patients in TOC since April.
 
-# In[ ]:
+# In[53]:
 
 
 # docrev_dissum = feature_from_assessment_text(progs, assess, ases_nm='TOC Post Discharge Outreach',
@@ -566,7 +619,7 @@ progs['toc_cm_touch_yn'] = cm_toc_ases2
 # progs['docrev_dissum'] = docrev_dissum
 
 
-# In[ ]:
+# In[54]:
 
 
 # docrev_histphys = feature_from_assessment_text(progs, assess, ases_nm='TOC Post Discharge Outreach',
@@ -575,7 +628,7 @@ progs['toc_cm_touch_yn'] = cm_toc_ases2
 # progs['docrev_histphys'] = docrev_histphys
 
 
-# In[ ]:
+# In[55]:
 
 
 # docrev_medrec_ehr = feature_from_assessment_text(progs, assess, ases_nm='TOC Post Discharge Outreach',
@@ -584,7 +637,7 @@ progs['toc_cm_touch_yn'] = cm_toc_ases2
 # progs['docrev_medrec_ehr'] = docrev_medrec_ehr
 
 
-# In[ ]:
+# In[56]:
 
 
 # docrev_meds = feature_from_assessment_text(progs, assess, ases_nm='TOC Post Discharge Outreach',
@@ -593,7 +646,7 @@ progs['toc_cm_touch_yn'] = cm_toc_ases2
 # progs['docrev_meds'] = docrev_meds
 
 
-# In[ ]:
+# In[57]:
 
 
 # docrev_PCPrecs = feature_from_assessment_text(progs, assess, ases_nm='TOC Post Discharge Outreach',
@@ -602,7 +655,7 @@ progs['toc_cm_touch_yn'] = cm_toc_ases2
 # progs['docrev_PCPrecs'] = docrev_PCPrecs
 
 
-# In[ ]:
+# In[58]:
 
 
 # docrev_problist = feature_from_assessment_text(progs, assess, ases_nm='TOC Post Discharge Outreach',
@@ -611,7 +664,7 @@ progs['toc_cm_touch_yn'] = cm_toc_ases2
 # progs['docrev_problist'] = docrev_problist
 
 
-# In[ ]:
+# In[59]:
 
 
 # docrev_refhist = feature_from_assessment_text(progs, assess, ases_nm='TOC Post Discharge Outreach',
@@ -620,7 +673,7 @@ progs['toc_cm_touch_yn'] = cm_toc_ases2
 # progs['docrev_refhist'] = docrev_refhist
 
 
-# In[ ]:
+# In[60]:
 
 
 # no_part_CM = feature_from_assessment_text(progs, assess, ases_nm='TOC Post Discharge Outreach',
@@ -629,7 +682,7 @@ progs['toc_cm_touch_yn'] = cm_toc_ases2
 # progs['no_part_CM'] = no_part_CM
 
 
-# In[ ]:
+# In[61]:
 
 
 # no_part_DM = feature_from_assessment_text(progs, assess, ases_nm='TOC Post Discharge Outreach',
@@ -638,7 +691,7 @@ progs['toc_cm_touch_yn'] = cm_toc_ases2
 # progs['no_part_DM'] = no_part_DM
 
 
-# In[ ]:
+# In[62]:
 
 
 # agree_care_plan = feature_from_assessment_text(progs, assess, ases_nm='TOC Post Discharge Outreach',
@@ -647,21 +700,21 @@ progs['toc_cm_touch_yn'] = cm_toc_ases2
 # progs['agree_care_plan'] = agree_care_plan
 
 
-# In[ ]:
+# In[63]:
 
 
 ##medrec_cnt = find_assessments_during_program(progs,assess, ases_nm='CM Medication Reconciliation')
 ##progs['medrec_cnt']=medrec_cnt
 
 
-# In[ ]:
+# In[64]:
 
 
 ##phfu_cnt = find_assessments_during_program(progs ,assess, ases_nm='Post-Hospitalization Follow-up')
 ##progs['phfu_cnt']=phfu_cnt
 
 
-# In[ ]:
+# In[65]:
 
 
 ## calc number of admits that occur within 30 day window after program begins
@@ -670,7 +723,7 @@ progs['adm_30_after'] = thirty_day_after_adm
 progs['bd_30_after'] = thirty_day_after_bd
 
 
-# In[ ]:
+# In[66]:
 
 
 ## calc number of admits that occur within 90 day window after program begins
@@ -679,7 +732,7 @@ progs['adm_90_after'] = ninety_day_after_adm
 progs['bd_90_after'] = ninety_day_after_bd
 
 
-# In[ ]:
+# In[67]:
 
 
 ## calc number of readmits that occur within 90 day window after program begins
@@ -687,21 +740,21 @@ ninety_day_after_readm, ninety_day_after_bd = get_adm_after(progs, readmits, win
 progs['readm_90_after'] = ninety_day_after_readm
 
 
-# In[ ]:
+# In[68]:
 
 
 thirty_day_after_TOC = get_adm_after_TOC(progs, admits)
 progs['adm_30_after_TOC'] = thirty_day_after_TOC
 
 
-# In[ ]:
+# In[69]:
 
 
 thirty_day_after_TOC_re = get_adm_after_TOC(progs, readmits)
 progs['readm_30_after_TOC'] = thirty_day_after_TOC_re
 
 
-# In[ ]:
+# In[70]:
 
 
 ## function that counts relevant touches during a care management program
@@ -711,7 +764,7 @@ progs['readm_30_after_TOC'] = thirty_day_after_TOC_re
 #        assess
 
 
-# In[ ]:
+# In[71]:
 
 
 # ## calc number of admits that occur within 30 day window before program begins
@@ -720,7 +773,7 @@ progs['readm_30_after_TOC'] = thirty_day_after_TOC_re
 # progs['bd_30_before'] = thirty_day_before_bd
 
 
-# In[ ]:
+# In[72]:
 
 
 ## calc number of admits that occur within 90 day window before program begins
@@ -729,7 +782,7 @@ progs['adm_90_before'] = ninety_day_before_adm
 progs['bd_90_before'] = ninety_day_before_bd
 
 
-# In[ ]:
+# In[73]:
 
 
 ## calc number of admits that occur within 90 day window before program begins
@@ -737,58 +790,58 @@ ninety_day_before_readm , ninety_day_before_bd = get_adm_before(progs, readmits)
 progs['adm_90_before'] = ninety_day_before_readm
 
 
-# In[ ]:
+# In[74]:
 
 
 progs['time_to_enroll'] = progs['prog_create_date']-progs['index_date']
 progs['time_to_enroll'] = progs['time_to_enroll']/ timedelta(days=1)
 
 
-# In[ ]:
+# In[75]:
 
 
 # progs['time_to_enroll'].fillna(float(progs['time_to_enroll'].mean()), inplace=True)
 
 
-# In[ ]:
+# In[76]:
 
 
 progs['prog_duration'] = progs['prog_end_date']-progs['prog_create_date']
 progs['prog_duration'] = progs['prog_duration']/ timedelta(days=1)
 
 
-# In[ ]:
+# In[77]:
 
 
 # progs['prog_duration'].fillna(float(progs['prog_duration'].median()), inplace=True)
 
 
-# In[ ]:
+# In[78]:
 
 
 progs['index_to_next_days'] = progs['frst_adm_aftr_enrl']-progs['index_date']
 progs['index_to_next_days'] = progs['index_to_next_days']/ timedelta(days=1)
 
 
-# In[ ]:
+# In[79]:
 
 
 adm_yn = adms_to_one_zero(progs, 'adm_30_after_TOC')
 
 
-# In[ ]:
+# In[80]:
 
 
 progs['is_30_TOC_adm'] = adm_yn
 
 
-# In[ ]:
+# In[81]:
 
 
 readm_yn = adms_to_one_zero(progs, 'readm_30_after_TOC')
 
 
-# In[ ]:
+# In[82]:
 
 
 progs['is_30_TOC_readm'] = readm_yn
@@ -796,7 +849,7 @@ progs['is_30_TOC_readm'] = readm_yn
 
 # ## Exploratory Data Analysis
 
-# In[ ]:
+# In[83]:
 
 
 # fighist = plt.figure(figsize=(12,6))
@@ -811,7 +864,7 @@ progs['is_30_TOC_readm'] = readm_yn
 # ax1.legend();
 
 
-# In[ ]:
+# In[84]:
 
 
 # fighist = plt.figure(figsize=(12,6))
@@ -825,7 +878,7 @@ progs['is_30_TOC_readm'] = readm_yn
 # ax1.legend();
 
 
-# In[ ]:
+# In[85]:
 
 
 # fighist_TOC = plt.figure(figsize=(12,6))
@@ -841,7 +894,7 @@ progs['is_30_TOC_readm'] = readm_yn
 # ax1.legend();
 
 
-# In[ ]:
+# In[86]:
 
 
 # fighist_TOC = plt.figure(figsize=(12,6))
@@ -859,7 +912,7 @@ progs['is_30_TOC_readm'] = readm_yn
 # ax1.legend();
 
 
-# In[ ]:
+# In[87]:
 
 
 # fighist_TOC = plt.figure(figsize=(12,6))
@@ -875,7 +928,7 @@ progs['is_30_TOC_readm'] = readm_yn
 # ax1.legend();
 
 
-# In[ ]:
+# In[88]:
 
 
 # fighist_TOC = plt.figure(figsize=(12,6))
@@ -888,25 +941,25 @@ progs['is_30_TOC_readm'] = readm_yn
 # ax1.legend();
 
 
-# In[ ]:
+# In[89]:
 
 
 # progs[progs['PRGM_NM']=='Transitions of Care - Post Discharge'].pivot_table(values='adm_30_after_TOC', index='PRGM_STOP_RSN', aggfunc=['count','mean'], dropna=True)
 
 
-# In[ ]:
+# In[90]:
 
 
 ## Understand relationship between LACE and time to enroll
 
 
-# In[ ]:
+# In[91]:
 
 
 # progs[progs['PRGM_NM']=='Transitions of Care - Post Discharge'].pivot_table(values='adm_30_after_TOC', index='lace_score', columns='is_optin', aggfunc=['count','mean'], dropna=True)
 
 
-# In[ ]:
+# In[92]:
 
 
 # ## graph violinplots of optin vs. optout LACE Scores.
@@ -915,14 +968,14 @@ progs['is_30_TOC_readm'] = readm_yn
 # sns.boxplot(ax=ax1, x="lace_score", y='age', data=progs[progs['PRGM_NM']=='Transitions of Care - Post Discharge'])
 
 
-# In[ ]:
+# In[93]:
 
 
 # ## graph violinplots of optin vs. optout LACE Scores.
 # sns.violinplot(x="is_optin", y='lace_score', data=progs[progs['PRGM_NM']=='Transitions of Care - Post Discharge'])
 
 
-# In[ ]:
+# In[94]:
 
 
 ## use logisic regression to test whether opt_in has impact on readmit_30_days_TOC, controlling for other variables.
@@ -930,13 +983,13 @@ progs['is_30_TOC_readm'] = readm_yn
 
 # ## TOC
 
-# In[ ]:
+# In[95]:
 
 
 progs_toc = progs
 
 
-# In[ ]:
+# In[96]:
 
 
 # ## Two variables, plotting y's
@@ -951,49 +1004,49 @@ progs_toc = progs
 # plt.show()
 
 
-# In[ ]:
+# In[97]:
 
 
 progs_toc = progs_toc[progs_toc['PRGM_NM']=='Transitions of Care - Post Discharge']
 
 
-# In[ ]:
+# In[98]:
 
 
 progs_toc_w_lace = progs_toc[(progs_toc['lace_score'].isna()==False) & (progs_toc['prog_create_date']<'2018-08-15')].reset_index()
 
 
-# In[ ]:
+# In[99]:
 
 
 class_weight={0: 0.5, 1: 2}
 
 
-# In[ ]:
+# In[100]:
 
 
 progs_toc_ent = pd.get_dummies(pd.Series(list(progs_toc_w_lace['ENT_TYPE'])))
 
 
-# In[ ]:
+# In[101]:
 
 
 progs_toc_lob = pd.get_dummies(pd.Series(list(progs_toc_w_lace['LOB_SUB_CGY'])))
 
 
-# In[ ]:
+# In[102]:
 
 
 progs_toc_rgn = pd.get_dummies(pd.Series(list(progs_toc_w_lace['RGON_NM'])))
 
 
-# In[ ]:
+# In[103]:
 
 
 progs_toc_w_lace = pd.concat([progs_toc_w_lace, progs_toc_lob, progs_toc_ent, progs_toc_rgn], axis=1)
 
 
-# In[ ]:
+# In[104]:
 
 
 X = np.array(progs_toc_w_lace[['toc_cm_touch_yn','age', 'is_male', 'bd_90_before', 'lace_score', 'time_to_enroll',
@@ -1001,81 +1054,88 @@ X = np.array(progs_toc_w_lace[['toc_cm_touch_yn','age', 'is_male', 'bd_90_before
                                'ORANGE COUNTY', 'SAN FERNANDO VALLEY', 'SOUTH BAY', 'VILLAGE HEALTH']])
 
 
-# In[ ]:
+# In[105]:
+
+
+X1 = np.array(progs_toc_w_lace[['toc_cm_touch_yn','age', 'is_male', 'lace_score', 'time_to_enroll',
+                               'COMMERCIAL', 'MEDI-CAL']])
+
+
+# In[106]:
 
 
 imput = Imputer(strategy='median')
 
 
-# In[ ]:
+# In[107]:
 
 
-X = imput.fit_transform(X)
+X1 = imput.fit_transform(X1)
 
 
 # #### Readmissions
 
-# In[ ]:
+# In[108]:
 
 
 y_read_yn = np.array(progs_toc_w_lace['is_30_TOC_readm'])
 
 
-# In[ ]:
+# In[109]:
 
 
-X_read_train, X_read_test, y_read_yn_train, y_read_yn_test = train_test_split(X, y_read_yn, test_size=.25)
+X_read_train, X_read_test, y_read_yn_train, y_read_yn_test = train_test_split(X1, y_read_yn, test_size=.25)
 
 
-# In[ ]:
+# In[110]:
 
 
 model_read = linear_model.LogisticRegression(C=1, penalty='l1', class_weight=class_weight)
 
 
-# In[ ]:
+# In[111]:
 
 
 model_read.fit(X_read_train, y_read_yn_train)
 
 
-# In[ ]:
+# In[112]:
 
 
 model_read.coef_
 
 
-# In[ ]:
+# In[113]:
 
 
 y_read_yn_preds = model_read.predict_proba(X_read_test)[:,1]
 
 
-# In[ ]:
+# In[114]:
 
 
 y_read_yn_preds_act = model_read.predict(X_read_test)
 
 
-# In[ ]:
+# In[115]:
 
 
 y_read_yn_test.mean()
 
 
-# In[ ]:
+# In[116]:
 
 
 y_read_yn_preds_act.mean()
 
 
-# In[ ]:
+# In[117]:
 
 
 read_yn_bootstraps = bootstrap_ci_coefficients(X_read_train, y_read_yn_train, 2000)
 
 
-# In[ ]:
+# In[118]:
 
 
 read_yn_bootstraps = pd.DataFrame(read_yn_bootstraps, columns=['toc_cm_touch_yn','age', 'is_male', 'bd_90_before', 'lace_score', 'time_to_enroll',
@@ -1107,7 +1167,7 @@ coefs = model_read.coef_
 
 pd.concat([pd.Series(['toc_cm_touch_yn','age', 'is_male', 'bd_90_before', 'lace_score', 'time_to_enroll',
                                'prog_duration', 'COMMERCIAL', 'MEDI-CAL', 'IPA', 'LA/DOWNTOWN', 'LONG BEACH', 'MAGAN',
-                               'ORANGE COUNTY', 'SAN FERNANDO VALLEY', 'SOUTH BAY', 'VILLAGE HEALTH']), pd.Series(np.exp(coefs)[0])], axis=1, )
+                               'ORANGE COUNTY', 'SAN FERNANDO VALLEY', 'SOUTH BAY', 'VILLAGE HEALTH']), pd.Series(np.exp(coefs)[0]-1)], axis=1, )
 
 
 # In[ ]:
@@ -1129,7 +1189,7 @@ inter
 # In[ ]:
 
 
-np.exp((coefs[0] * [1,70,1,1,10,2,30,0,1,1,1,0,0,0,0,0,0]).sum() + inter)
+np.exp((coefs[0] * [1,70,0,1,7,2,30,0,0,1,1,0,0,0,0,0,0]).sum() + inter)
 
 
 # In[ ]:
@@ -1146,61 +1206,67 @@ plotroc(TPR, FPR)
 
 # #### Admissions
 
-# In[ ]:
+# In[119]:
 
 
 y_ad_yn = np.array(progs_toc_w_lace['is_30_TOC_adm'])
 
 
-# In[ ]:
+# In[120]:
 
 
-X_ad_train, X_ad_test, y_ad_yn_train, y_ad_yn_test = train_test_split(X, y_ad_yn, test_size=.15)
+X_ad_train, X_ad_test, y_ad_yn_train, y_ad_yn_test = train_test_split(X1, y_ad_yn, test_size=.15)
 
 
-# In[ ]:
+# In[121]:
 
 
-model_ad = linear_model.LogisticRegression(C=1, penalty='l1', class_weight=class_weight)
+model_ad = linear_model.LogisticRegression(C=1000000, penalty='l1', class_weight=class_weight)
 
 
-# In[ ]:
+# In[122]:
 
 
-model_ad.fit(X_ad_train, y_ad_yn_train)
+model_ad.fit(X1, y_ad_yn)
 
 
-# In[ ]:
+# In[123]:
 
 
 model_ad.coef_
 
 
-# In[ ]:
+# In[124]:
+
+
+model_ad.intercept_
+
+
+# In[125]:
 
 
 y_ad_yn_preds = model_ad.predict_proba(X_ad_test)[:,1]
 
 
-# In[ ]:
+# In[126]:
 
 
 y_ad_yn_preds_act = model_ad.predict(X_ad_test)
 
 
-# In[ ]:
+# In[127]:
 
 
 y_ad_yn_test.mean()
 
 
-# In[ ]:
+# In[128]:
 
 
 y_ad_yn_preds_act.mean()
 
 
-# In[ ]:
+# In[129]:
 
 
 ad_yn_bootstraps = bootstrap_ci_coefficients(X_ad_train, y_ad_yn_train, 2000)
@@ -1240,15 +1306,32 @@ for m, ax in zip(col_names, axes.flatten()):
 # In[ ]:
 
 
+np.exp(ad_yn_bootstraps.mean(axis=0))-1
+
+
+# In[ ]:
+
+
 ad_coefs = model_ad.coef_
 
 
 # In[ ]:
 
 
-pd.concat([pd.Series(['toc_cm_touch_yn','age', 'is_male', 'bd_90_before', 'lace_score', 'time_to_enroll',
-                               'prog_duration', 'COMMERCIAL', 'MEDI-CAL', 'IPA', 'LA/DOWNTOWN', 'LONG BEACH', 'MAGAN',
-                               'ORANGE COUNTY', 'SAN FERNANDO VALLEY', 'SOUTH BAY', 'VILLAGE HEALTH']), pd.Series(np.exp(ad_coefs)[0])], axis=1, )
+pd.concat([pd.Series(['toc_cm_touch_yn','age', 'is_male', 'lace_score', 'time_to_enroll',
+                               'COMMERCIAL', 'MEDI-CAL']), pd.Series(np.exp(ad_coefs)[0])-1], axis=1, )
+
+
+# In[ ]:
+
+
+model_ad.intercept_
+
+
+# In[ ]:
+
+
+len(X_ad_train)
 
 
 # In[ ]:
@@ -1266,12 +1349,6 @@ inter
 # ['toc_cm_touch_yn','age', 'is_male', 'bd_90_before', 'lace_score', 'time_to_enroll',
 #                                'prog_duration', 'COMMERCIAL', 'MEDI-CAL', 'IPA', 'LA/DOWNTOWN', 'LONG BEACH', 'MAGAN',
 #                                'ORANGE COUNTY', 'SAN FERNANDO VALLEY', 'SOUTH BAY', 'VILLAGE HEALTH']
-
-# In[ ]:
-
-
-np.exp((ad_coefs[0] * [1,70,0,0,5,2,30,0,0,1,1,0,0,0,0,0,0]).sum() + inter)
-
 
 # In[ ]:
 
@@ -1297,6 +1374,12 @@ y_30_bd = np.array(progs_toc_w_lace['bd_30_after'])
 
 
 X_bd_train, X_bd_test, y_bd_train, y_bd_test = train_test_split(X, y_30_bd, test_size=.25)
+
+
+# In[ ]:
+
+
+y_30_bd.mean()
 
 
 # In[ ]:
@@ -1365,6 +1448,12 @@ for m, ax in zip(col_names, axes.flatten()):
 # In[ ]:
 
 
+bd_bootstraps.mean(axis=0)
+
+
+# In[ ]:
+
+
 pd.concat([pd.Series(['toc_cm_touch_yn','age', 'is_male', 'bd_90_before', 'lace_score', 'time_to_enroll',
                                'prog_duration', 'COMMERCIAL', 'MEDI-CAL', 'IPA', 'LA/DOWNTOWN', 'LONG BEACH', 'MAGAN',
                                'ORANGE COUNTY', 'SAN FERNANDO VALLEY', 'SOUTH BAY', 'VILLAGE HEALTH']), pd.Series(bd_coefs)], axis=1, )
@@ -1389,19 +1478,7 @@ inter
 # In[ ]:
 
 
-progs_toc_w_lace.pivot_table(['preds', 'is_30_TOC_adm'], index='LOB_SUB_CGY', aggfunc=['mean'])
-
-
-# In[ ]:
-
-
-progs_toc_w_lace.pivot_table(['preds', 'is_30_TOC_adm'], index='RGON_NM', aggfunc='mean')
-
-
-# In[ ]:
-
-
-progs_toc_w_lace['preds'].mean()
+assess['ASES_NM'].value_counts()
 
 
 # In[ ]:
@@ -1413,43 +1490,106 @@ progs_toc_w_lace['is_30_TOC_adm'].mean()
 # In[ ]:
 
 
-gb_mod = GradientBoostingClassifier(learning_rate=0.05, max_depth=8, n_estimators=200)
+gb_mod = GradientBoostingClassifier(learning_rate=0.05, max_depth=3, n_estimators=150)
 
 
 # In[ ]:
 
 
-gb_mod.fit(X_read_train, y_read_yn_train)
+gb_mod.fit(X_ad_train, y_ad_yn_train)
 
 
 # In[ ]:
 
 
-y_read_preds_gb = gb_mod.predict_proba(X_read_test)[:,1]
+y_ad_preds_gb = gb_mod.predict_proba(X_ad_test)[:,1]
 
 
 # In[ ]:
 
 
-y_read_preds_gb_act = gb_mod.predict(X_read_test)
+y_ad_preds_gb_act = gb_mod.predict(X_ad_test)
 
 
 # In[ ]:
 
 
-read_gb_TPR, read_gb_FPR, read_gb_thresholds = roc_curve(y_read_yn_test, y_read_preds_gb, pos_label=None, sample_weight=None, drop_intermediate=True)
+ad_gb_TPR, ad_gb_FPR, ad_gb_thresholds = roc_curve(y_ad_yn_test, y_ad_preds_gb, pos_label=None, sample_weight=None, drop_intermediate=True)
 
 
 # In[ ]:
 
 
-plotroc(read_gb_TPR, read_gb_FPR)
+plotroc(ad_gb_TPR, ad_gb_FPR)
 
 
 # In[ ]:
 
 
-print(classification_report(y_read_yn_test, y_read_preds_gb_act))
+print(classification_report(y_ad_yn_test, y_ad_preds_gb_act))
+
+
+# #### TOC - Use model to identify segments where we're doing better, worse than average
+
+# In[ ]:
+
+
+gb_mod.fit(X, y_ad_yn)
+
+
+# In[ ]:
+
+
+progs_toc_w_lace.columns
+
+
+# In[ ]:
+
+
+progs_toc_w_lace.pivot_table(values="EMPI", index='is_30_TOC_adm', columns='toc_cm_touch_yn',
+                            aggfunc='count')
+
+
+# In[ ]:
+
+
+progs_toc_w_lace.to_csv('data/prog_toc_lace.csv')
+
+
+# In[ ]:
+
+
+y_gb_preds_act = to_one_zero(y_ad_preds_gb_full, .355)
+
+
+# In[ ]:
+
+
+y_gb_preds_act.mean()
+
+
+# In[ ]:
+
+
+y_ad_preds_gb_full = gb_mod.predict_proba(X)[:,1]
+
+
+# In[ ]:
+
+
+y_ad_preds_gb_act_full = gb_mod.predict(X)
+
+
+# In[ ]:
+
+
+ad_gb_full_TPR, ad_gb_full_FPR, ad_gb_full_thresholds = roc_curve(y_ad_yn_test, y_ad_preds_gb, pos_label=None, sample_weight=None, drop_intermediate=True)
+
+
+# In[ ]:
+
+
+plotroc(ad_gb_full_TPR, ad_gb_full_FPR)
 
 
 # In[ ]:
@@ -1475,8 +1615,67 @@ print(classification_report(y_read_yn_test, y_read_preds_gb_act))
 # In[ ]:
 
 
+progs_toc_w_lace['gb_ad_preds'] = y_gb_preds_act
 
-progs_toc_w_lace.pivot_table(['preds', 'is_30_TOC_adm'], index='RGON_NM', aggfunc='mean')
+
+# In[ ]:
+
+
+progs_toc_w_lace['is_30_TOC_adm'].mean()
+
+
+# In[ ]:
+
+
+len(y_ad_preds_gb_act_full)
+
+
+# In[ ]:
+
+
+progs_toc_w_lace.pivot_table(['gb_ad_preds', 'is_30_TOC_adm'], index='RGON_NM', aggfunc=['mean', 'count']).to_csv('data/subgroup_reg.csv')
+
+
+# In[ ]:
+
+
+progs_toc_w_lace.pivot_table(['gb_ad_preds', 'is_30_TOC_adm'], index='LOB_SUB_CGY', aggfunc=['mean', 'count']).to_csv('data/subgroup_lob.csv')
+
+
+# In[ ]:
+
+
+progs_toc_w_lace.pivot_table(['gb_ad_preds', 'is_30_TOC_adm'], index='ENT_TYPE', aggfunc=['mean', 'count']).to_csv('data/subgroup_ent.csv')
+
+
+# In[ ]:
+
+
+progs_toc_w_lace.pivot_table(['gb_ad_preds', 'is_30_TOC_adm'], index='ASGN_USR', aggfunc=['mean', 'count']).to_csv('data/subgroup_user.csv')
+
+
+# In[ ]:
+
+
+progs_toc_w_lace.pivot_table(['gb_ad_preds', 'is_30_TOC_adm'], index='CLNC_NM', aggfunc=['mean', 'count']).to_csv('data/subgroup_site.csv')
+
+
+# In[ ]:
+
+
+print(confusion_matrix(progs_toc_w_lace['is_30_TOC_adm'], progs_toc_w_lace['gb_ad_preds']))
+
+
+# In[ ]:
+
+
+(3130+325)/(3130+325+181+181)
+
+
+# In[ ]:
+
+
+progs_toc_w_lace.columns
 
 
 # # CHF
@@ -1490,7 +1689,13 @@ progs_chf = progs
 # In[ ]:
 
 
-progs_chf = progs_chf[progs_chf['PRGM_NM']=='DM - HF'].reset_index(drop=True)
+progs_chf = progs_chf[(progs_chf['PRGM_NM']=='DM - HF') & (progs_chf['prog_create_date']<'2018-6-15')].reset_index(drop=True)
+
+
+# In[ ]:
+
+
+progs[progs['EMPI']==1001603330]
 
 
 # In[ ]:
@@ -1544,6 +1749,53 @@ progs_chf.to_csv('data/progs_chf.csv')
 ## Initial numbers for HF Difference of Differences
 
 
+# #### Parallel Assumption Testing
+
+# In[ ]:
+
+
+rel_empi_chf = list(progs_chf['EMPI'].unique())
+rel_admits_chf = admits[admits['EMPI'].isin(rel_empi_chf)].reset_index(drop=True)
+
+
+# In[ ]:
+
+
+chf_admit_yn, chf_optin_yn, chf_week = tag_chf_admissions(progs_chf, rel_admits_chf)
+
+
+# In[ ]:
+
+
+rel_admits_chf['chf_admit_yn'] = chf_admit_yn
+rel_admits_chf['chf_optin_yn'] = chf_optin_yn
+rel_admits_chf['chf_optin_week'] = chf_week
+
+
+# In[ ]:
+
+
+rel_admits_chf.pivot_table('ALOS_N', index='chf_optin_week', columns='chf_optin_yn', aggfunc='sum').to_csv('data/chf_bd.csv')
+
+
+# In[ ]:
+
+
+rel_admits_chf.pivot_table('ALOS_N', index='chf_optin_week', columns='chf_optin_yn', aggfunc='sum')
+
+
+# In[ ]:
+
+
+rel_admits_chf.pivot_table('ADMIT_CT', index='chf_optin_week', columns='chf_optin_yn', aggfunc='sum').to_csv('data/chf_adm.csv')
+
+
+# In[ ]:
+
+
+progs_copd.columns
+
+
 # ## COPD
 
 # In[ ]:
@@ -1555,66 +1807,7 @@ progs_copd = progs
 # In[ ]:
 
 
-progs_copd.columns
-
-
-# In[ ]:
-
-
-progs_copd = progs_copd[progs_copd['PRGM_NM']=='DM - CLD'].reset_index(drop=True)
-
-
-# In[ ]:
-
-
-rel_empi = list(progs_copd['EMPI'].unique())
-rel_admits = admits[admits['EMPI'].isin(rel_empi)].reset_index(drop=True)
-
-
-# In[ ]:
-
-
-def tag_copd_admissions(dm_progs, rel_admits):
-    dm_admit_yn = list(np.zeros(rel_admits.shape[0]))
-    dm_optin_yn = np.empty(rel_admits.shape[0])
-    dm_optin_yn[:] = np.nan
-    dm_optin_yn = list(dm_optin_yn)
-    dm_week = np.empty(rel_admits.shape[0])
-    dm_week[:] = np.nan
-    dm_week = list(dm_optin_yn)
-    for index, row in dm_progs.iterrows():
-        for index2, row2 in rel_admits.iterrows():
-            if (row2['EMPI']==row['EMPI']) & (row2['admit_date'] > (row['prog_create_date']-timedelta(days=90))) & (row2['admit_date'] < (row['prog_create_date']+timedelta(days=90))):
-                dm_admit_yn[index] = 1
-                dm_optin_yn[index] = (row['chf_ases_dur_copd']>0)
-                dm_week[index] = int(((row2['admit_date']-row['prog_create_date'])/timedelta(days=1))/7)
-    return dm_admit_yn, dm_optin_yn, dm_week
-
-
-# In[ ]:
-
-
-copd_admit_yn, copd_optin_yn, copd_week = tag_copd_admissions(progs_copd, rel_admits)
-
-
-# In[ ]:
-
-
-rel_admits['copd_admit_yn'] = copd_admit_yn
-rel_admits['copd_optin_yn'] = copd_optin_yn
-rel_admits['copd_optin_week'] = copd_week
-
-
-# In[ ]:
-
-
-rel_admits.columns
-
-
-# In[ ]:
-
-
-rel_admits.pivot_table('ALOS_N', index='copd_optin_week', columns='copd_optin_yn', aggfunc=['sum'])
+progs_copd = progs_copd[(progs_copd['PRGM_NM']=='DM - CLD') & (progs_copd['prog_create_date']<'2018-6-15')].reset_index(drop=True)
 
 
 # #### Need these from Emmy
@@ -1648,8 +1841,55 @@ cnt_copd_90 = find_assessments_during_program_chf(progs_copd, assess_copd)
 # In[ ]:
 
 
-progs_copd['chf_ases_dur_copd'] = cnt_copd_90
+progs_copd['copd_ases_dur_copd'] = cnt_copd_90
 cm_copd_ases_yn = adms_to_one_zero_v2(cnt_copd_90)
+
+
+# #### Parallel Assumption Testing
+
+# In[ ]:
+
+
+rel_empi = list(progs_copd['EMPI'].unique())
+rel_admits = admits[admits['EMPI'].isin(rel_empi)].reset_index(drop=True)
+
+
+# In[ ]:
+
+
+copd_admit_yn, copd_optin_yn, copd_week = tag_copd_admissions(progs_copd, rel_admits)
+
+
+# In[ ]:
+
+
+rel_admits['copd_admit_yn'] = copd_admit_yn
+rel_admits['copd_optin_yn'] = copd_optin_yn
+rel_admits['copd_optin_week'] = copd_week
+
+
+# In[ ]:
+
+
+progs_copd.count()
+
+
+# In[ ]:
+
+
+rel_admits.pivot_table('ALOS_N', index='copd_optin_week', columns='copd_optin_yn', aggfunc='sum').to_csv('data/copd_bd.csv')
+
+
+# In[ ]:
+
+
+rel_admits.pivot_table('ADMIT_CT', index='copd_optin_week', columns='copd_optin_yn', aggfunc='sum').to_csv('data/copd_adm.csv')
+
+
+# In[ ]:
+
+
+progs_copd.columns
 
 
 # In[ ]:
@@ -1714,4 +1954,96 @@ progs.head()
 # for num in range(194):
 #     if counts[num]>100:
 #         keep_ases.append(list_o_ases[num])
+
+
+# In[ ]:
+
+
+import scipy.stats as st
+
+
+# In[ ]:
+
+
+st.binom.cdf(5, 10, .15)
+
+
+# In[ ]:
+
+
+progs_toc_w_lace.columns
+
+
+# ## Lace only model
+
+# In[ ]:
+
+
+X_lace = np.array(progs_toc_w_lace[['lace_score']])
+
+
+# In[ ]:
+
+
+y_read_yn = np.array(progs_toc_w_lace['is_30_TOC_adm'])
+
+
+# In[ ]:
+
+
+X_read_train, X_read_test, y_read_yn_train, y_read_yn_test = train_test_split(X_lace, y_read_yn, test_size=.2)
+
+
+# In[ ]:
+
+
+model_ad = linear_model.LogisticRegression(C=1, penalty='l1', class_weight=class_weight)
+
+
+# In[ ]:
+
+
+model_ad.fit(X_read_train, y_read_yn_train)
+
+
+# In[ ]:
+
+
+model_ad.coef_
+
+
+# In[ ]:
+
+
+y_read_yn_preds = model_ad.predict_proba(X_read_test)[:,1]
+
+
+# In[ ]:
+
+
+y_read_yn_preds_act = model_ad.predict(X_read_test)
+
+
+# In[ ]:
+
+
+y_read_yn_test.mean()
+
+
+# In[ ]:
+
+
+y_ad_yn_preds_act.mean()
+
+
+# In[ ]:
+
+
+ad_gb_full_TPR, ad_gb_full_FPR, ad_gb_full_thresholds = roc_curve(y_read_yn_test, y_read_yn_preds, pos_label=None, sample_weight=None, drop_intermediate=True)
+
+
+# In[ ]:
+
+
+plotroc(ad_gb_full_TPR, ad_gb_full_FPR)
 
