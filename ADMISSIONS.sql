@@ -4,9 +4,9 @@ DECLARE @START_MTH smalldatetime
 	   ,@END_MM int												
 													
 SET	@START_MTH = '9/1/2017'												
-SET	@END_MTH = '9/15/2018'												
+SET	@END_MTH = '9/25/2018'												
 SET @START_MM = 201801													
-SET @END_MM = 201807												
+SET @END_MM = 201810												
 													
 	SELECT L.BUDGET_COMMUNITY AS 'REGION'												
 	      ,Q.[Model]												
