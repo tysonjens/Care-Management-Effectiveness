@@ -61,8 +61,8 @@ SELECT
 	  ,P.[ASGN_USR]
 	  ,P.[PRIM_PRGM_FLAG]
 
-	Select
-			Min (MEMBER_EFF_DT)
-			,Max (MEMBER_TERM_DT)
+	--Select
+		--	Min (MEMBER_EFF_DT)
+			--,Max (MEMBER_TERM_DT)
 	  
-		FROM [IADS_V3].[dbo].[LU_ELIGIBILITY]
+		--FROM [IADS_V3].[dbo].[LU_ELIGIBILITY]
